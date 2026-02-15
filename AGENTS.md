@@ -8,6 +8,8 @@
 - 自动去除视频水印
 - CLI 和 Web UI 两种使用方式
 
+**版本**: 1.0.0
+
 ## 技术栈
 
 - **Python 3.8+**
@@ -19,10 +21,13 @@
 
 ```
 xhs-to-youtube/
+├── __init__.py       # Python 包包初始化
 ├── core.py           # 核心逻辑类 XHSToYouTube
 ├── gui.py            # Gradio Web UI
 ├── main.py           # 命令行入口
+├── test_flow.py      # 测试套件
 ├── setup.sh          # 环境配置脚本
+├── .gitignore        # Git 忽略配置
 ├── cookies.txt       # 小红书 Cookie (需配置)
 ├── credentials.json  # Google OAuth 凭证 (需配置)
 ├── token.json        # OAuth Token (自动生成)
@@ -175,4 +180,29 @@ google-auth-oauthlib
 google-auth-httplib2
 gradio>=4.0
 requests
+yt-dlp
 ```
+
+## 测试
+
+```bash
+# 运行测试套件
+python test_flow.py
+```
+
+测试内容包括：
+1. 凭证状态检查
+2. 视频流选择（去水印）
+3. 标题提取
+4. 视频下载
+5. 完整搬运流程
+
+## .gitignore
+
+敏感文件已配置忽略：
+- `cookies.txt` - 小红书 Cookie
+- `credentials.json` - Google OAuth 凭证
+- `token.json` - OAuth Token
+- `videos/` - 视频缓存
+- `__pycache__/` - Python 缓存
+- `venv/` - 虚拟环境
