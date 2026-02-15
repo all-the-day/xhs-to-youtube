@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 小红书到 YouTube 视频搬运核心逻辑
-支持进度回调和日志回调，可被 CLI 和 GUI 共同调用
+支持进度回调和日志回调
 """
 
 import json

@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 """
-小红书视频搬运到 YouTube 的自动化脚本 - 命令行版本
+小红书视频搬运到 YouTube 的自动化脚本
 
 使用方法:
     python main.py <小红书视频URL> --title-en "英文标题"
     python main.py <小红书视频URL> --title-en "English Title" --desc "视频描述"
-
-Web UI:
-    python gui.py
 """
 
 import argparse
@@ -33,9 +30,6 @@ def main():
 
     # 保留本地视频文件
     python main.py "https://www.xiaohongshu.com/explore/xxx" --keep-video
-
-Web UI:
-    python gui.py
         """
     )
     
