@@ -149,6 +149,74 @@ OAuth 授权后自动生成，存储访问令牌。
 - 错误处理：返回 `(success: bool, message: str)` 元组
 - 编码：UTF-8
 
+## Git 开发规范
+
+### 分支管理策略
+
+```
+master        # 主分支，稳定版本（测试通过）
+├── feature/xxx   # 功能分支（保留）
+├── fix/xxx        # 修复分支（保留）
+├── refactor/xxx   # 重构分支（保留）
+└── docs/xxx       # 文档分支（保留）
+```
+
+### 分支命名规范
+
+| 类型 | 命名 | 示例 |
+|------|------|------|
+| 功能 | `feature/功能名` | `feature/add-batch-upload` |
+| 修复 | `fix/问题描述` | `fix/watermark-detection` |
+| 重构 | `refactor/重构内容` | `refactor/remove-gui` |
+| 文档 | `docs/文档内容` | `docs/update-readme` |
+
+### 提交消息规范
+
+格式：`类型: 简短描述`
+
+| 类型 | 用途 |
+|------|------|
+| `feat` | 新功能 |
+| `fix` | Bug 修复 |
+| `refactor` | 代码重构 |
+| `docs` | 文档更新 |
+| `test` | 测试相关 |
+| `chore` | 构建/工具变更 |
+
+### 开发流程
+
+1. **创建分支**
+   ```bash
+   git checkout master
+   git pull
+   git checkout -b feature/新功能名
+   ```
+
+2. **开发与提交**
+   ```bash
+   git add .
+   git commit -m "feat: 添加XXX功能"
+   ```
+
+3. **回归测试（必须）**
+   ```bash
+   python test_flow.py
+   ```
+
+4. **合并回主分支**
+   ```bash
+   git checkout master
+   git merge feature/新功能名
+   # 功能分支保留，不删除
+   ```
+
+### 合并检查清单
+
+- [ ] 代码已提交
+- [ ] 回归测试通过 (`python test_flow.py`)
+- [ ] 无遗留的调试代码
+- [ ] 文档已更新（如需要）
+
 ## 依赖版本
 
 ```
