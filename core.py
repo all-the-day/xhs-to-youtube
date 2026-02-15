@@ -320,12 +320,25 @@ class XHSToYouTube:
             desc = ""
             duration = 0
             
-            # 提取标题
-            title_match = __import__('re').search(r'"title"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', resp.text)
-            if title_match:
-                title = title_match.group(1)
-                # 过滤掉页面标题
-                if 'ICP' in title or '小红书' in title:
+            # 提取标题（优先从 HTML title 获取）
+            html_title_match = __import__('re').search(r'<title>([^<]+)</title>', resp.text)
+            if html_title_match:
+                html_title = html_title_match.group(1)
+                # 格式通常是 "标题 - 小红书"，移除后缀
+                if ' - 小红书' in html_title:
+                    title = html_title.split(' - 小红书')[0].strip()
+                elif '小红书' in html_title and len(html_title) > 10:
+                    # 如果包含小红书但不是后缀格式，尝试提取前面部分
+                    title = html_title.replace(' - 小红书', '').replace('小红书', '').strip()
+                else:
+                    title = html_title.strip()
+            
+            # 如果 HTML title 无效，尝试从 JSON 中获取
+            if not title or title == "未知标题" or 'ICP' in title:
+                title_match = __import__('re').search(r'"displayTitle"\s*:\s*"([^"]*)"', resp.text)
+                if title_match and title_match.group(1):
+                    title = title_match.group(1)
+                else:
                     title = "未知标题"
             
             # 提取描述
