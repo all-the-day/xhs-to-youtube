@@ -2,28 +2,26 @@
 
 ## 项目概述
 
-将小红书视频自动搬运到 YouTube 频道的 Python 工具，支持：
+将小红书视频自动搬运到 YouTube 频道的 Python 命令行工具，支持：
 - 自动下载小红书视频（无水印）
 - OAuth 2.0 授权 YouTube 上传
 - 自动去除视频水印
-- CLI 和 Web UI 两种使用方式
+- 双语标题生成
 
-**版本**: 1.0.0
+**版本**: 1.1.0
 
 ## 技术栈
 
 - **Python 3.8+**
 - **Google YouTube Data API v3** - 视频上传
-- **Gradio** - Web UI 框架
 - **OAuth 2.0** - Google 账号授权
 
 ## 项目结构
 
 ```
 xhs-to-youtube/
-├── __init__.py       # Python 包包初始化
+├── __init__.py       # Python 包初始化
 ├── core.py           # 核心逻辑类 XHSToYouTube
-├── gui.py            # Gradio Web UI
 ├── main.py           # 命令行入口
 ├── test_flow.py      # 测试套件
 ├── setup.sh          # 环境配置脚本
@@ -43,7 +41,7 @@ xhs-to-youtube/
 - `_select_best_video_stream(page_text)` - 解析视频流并选择无水印版本
 - `get_youtube_service()` - 获取 YouTube API 服务
 - `authorize_youtube()` - OAuth 授权（本地服务器方式）
-- `get_authorization_url()` - 获取授权 URL（Web UI 方式）
+- `get_authorization_url()` - 获取授权 URL
 - `authorize_youtube_with_code(code)` - 使用授权码完成授权
 - `upload_to_youtube()` - 上传视频到 YouTube
 - `transfer()` - 完整搬运流程
@@ -88,7 +86,7 @@ h265: X265_MP4_WEB_114     → 无水印 ✓
 
 ```bash
 # 安装依赖
-pip install google-api-python-client google-auth-oauthlib google-auth-httplib2 gradio requests
+pip install google-api-python-client google-auth-oauthlib google-auth-httplib2 requests
 
 # 或运行配置脚本
 bash setup.sh
@@ -110,19 +108,6 @@ python main.py "小红书URL" --tags "vlog,life" --privacy unlisted
 python main.py "小红书URL" --keep-video
 ```
 
-### Web UI 使用
-
-```bash
-# 启动 Web UI
-python gui.py
-
-# 指定端口
-python gui.py --port 8080
-
-# 生成公网分享链接
-python gui.py --share
-```
-
 ## 配置文件
 
 ### cookies.txt
@@ -141,15 +126,7 @@ OAuth 授权后自动生成，存储访问令牌。
 
 ## OAuth 授权流程
 
-### 方式一：Web UI 授权（推荐）
-1. 点击「获取授权 URL」
-2. 复制 URL 到浏览器完成授权
-3. 复制授权码粘贴到输入框
-4. 点击「完成授权」
-
-### 方式二：命令行授权
-- 点击「授权 YouTube」按钮
-- 自动打开浏览器，授权后自动完成
+首次运行时，脚本会自动打开浏览器进行授权，授权成功后自动生成 `token.json`。
 
 ## 视频元数据
 
@@ -178,9 +155,7 @@ OAuth 授权后自动生成，存储访问令牌。
 google-api-python-client
 google-auth-oauthlib
 google-auth-httplib2
-gradio>=4.0
 requests
-yt-dlp
 ```
 
 ## 测试
