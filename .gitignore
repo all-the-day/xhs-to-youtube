@@ -29,3 +29,8 @@ Thumbs.db
 
 # 日志
 *.log
+test.txt
+test_videos.json
+
+# 开发上下文
+.dev_context/
