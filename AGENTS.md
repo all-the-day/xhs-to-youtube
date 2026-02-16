@@ -283,3 +283,8 @@ python test_flow.py
 - `videos/` - 视频缓存
 - `__pycache__/` - Python 缓存
 - `venv/` - 虚拟环境
+
+## 测试参考
+
+测试 URL（短链接）：
+- `http://xhslink.com/o/6fDiSoovKl5` - 视频下载测试

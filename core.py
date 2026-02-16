@@ -6,6 +6,7 @@
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Callable, Optional, Dict, Any
@@ -77,6 +78,35 @@ class XHSToYouTube:
         """更新进度"""
         if self.progress_callback:
             self.progress_callback(value, status)
+    
+    def _load_cookies(self) -> Dict[str, str]:
+        """
+        加载小红书 Cookie
+        
+        Returns:
+            Cookie 字典
+        """
+        cookies = {}
+        if COOKIES_FILE.exists():
+            with open(COOKIES_FILE) as f:
+                for line in f:
+                    if line.startswith('#') or not line.strip():
+                        continue
+                    parts = line.strip().split('\t')
+                    if len(parts) >= 7:
+                        cookies[parts[5]] = parts[6]
+        return cookies
+    
+    def _get_headers(self) -> Dict[str, str]:
+        """
+        获取默认请求头
+        
+        Returns:
+            请求头字典
+        """
+        return {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
     
     def check_credentials(self) -> Dict[str, CredentialStatus]:
         """
@@ -215,14 +245,14 @@ class XHSToYouTube:
         
         # 解析 h264 流
         h264_pattern = r'"h264"\s*:\s*\[(.*?)\](?=\s*,\s*"h265"|\s*\})'
-        h264_match = __import__('re').search(h264_pattern, page_text, __import__('re').DOTALL)
+        h264_match = re.search(h264_pattern, page_text, re.DOTALL)
         if h264_match:
             h264_text = h264_match.group(1)
             # 提取每个流的 URL 和描述
             url_pattern = r'"masterUrl"\s*:\s*"([^"]+)"'
             desc_pattern = r'"streamDesc"\s*:\s*"([^"]+)"'
-            urls = __import__('re').findall(url_pattern, h264_text)
-            descs = __import__('re').findall(desc_pattern, h264_text)
+            urls = re.findall(url_pattern, h264_text)
+            descs = re.findall(desc_pattern, h264_text)
             
             for url, desc in zip(urls, descs):
                 decoded_url = codecs.decode(url, 'unicode_escape')
@@ -236,13 +266,13 @@ class XHSToYouTube:
         
         # 解析 h265 流
         h265_pattern = r'"h265"\s*:\s*\[(.*?)\](?=\s*,\s*"av1"|\s*,\s*"h266"|\s*\})'
-        h265_match = __import__('re').search(h265_pattern, page_text, __import__('re').DOTALL)
+        h265_match = re.search(h265_pattern, page_text, re.DOTALL)
         if h265_match:
             h265_text = h265_match.group(1)
             url_pattern = r'"masterUrl"\s*:\s*"([^"]+)"'
             desc_pattern = r'"streamDesc"\s*:\s*"([^"]+)"'
-            urls = __import__('re').findall(url_pattern, h265_text)
-            descs = __import__('re').findall(desc_pattern, h265_text)
+            urls = re.findall(url_pattern, h265_text)
+            descs = re.findall(desc_pattern, h265_text)
             
             for url, desc in zip(urls, descs):
                 decoded_url = codecs.decode(url, 'unicode_escape')
@@ -290,23 +320,11 @@ class XHSToYouTube:
         # 确保视频目录存在
         VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
         
-        # 读取 Cookie
-        cookies = {}
-        if COOKIES_FILE.exists():
-            with open(COOKIES_FILE) as f:
-                for line in f:
-                    if line.startswith('#') or not line.strip():
-                        continue
-                    parts = line.strip().split('\t')
-                    if len(parts) >= 7:
-                        cookies[parts[5]] = parts[6]
-            self._log(f"[下载] 已加载 {len(cookies)} 个 Cookie")
-        else:
-            self._log(f"[警告] 未找到 Cookie 文件: {COOKIES_FILE}")
+        # 读取 Cookie 和 headers
+        cookies = self._load_cookies()
+        self._log(f"[下载] 已加载 {len(cookies)} 个 Cookie")
         
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
+        headers = self._get_headers()
         
         try:
             # 获取页面内容
@@ -321,7 +339,7 @@ class XHSToYouTube:
             duration = 0
             
             # 提取标题（优先从 HTML title 获取）
-            html_title_match = __import__('re').search(r'<title>([^<]+)</title>', resp.text)
+            html_title_match = re.search(r'<title>([^<]+)</title>', resp.text)
             if html_title_match:
                 html_title = html_title_match.group(1)
                 # 格式通常是 "标题 - 小红书"，移除后缀
@@ -335,19 +353,19 @@ class XHSToYouTube:
             
             # 如果 HTML title 无效，尝试从 JSON 中获取
             if not title or title == "未知标题" or 'ICP' in title:
-                title_match = __import__('re').search(r'"displayTitle"\s*:\s*"([^"]*)"', resp.text)
+                title_match = re.search(r'"displayTitle"\s*:\s*"([^"]*)"', resp.text)
                 if title_match and title_match.group(1):
                     title = title_match.group(1)
                 else:
                     title = "未知标题"
             
             # 提取描述
-            desc_match = __import__('re').search(r'"desc"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', resp.text)
+            desc_match = re.search(r'"desc"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', resp.text)
             if desc_match:
                 desc = desc_match.group(1)
             
             # 提取时长（小红书的 duration 可能是秒或毫秒）
-            duration_match = __import__('re').search(r'"duration"\s*:\s*(\d+)', resp.text)
+            duration_match = re.search(r'"duration"\s*:\s*(\d+)', resp.text)
             if duration_match:
                 duration_value = int(duration_match.group(1))
                 # 如果值大于 1000，则认为是毫秒，需要转换为秒
@@ -760,30 +778,18 @@ class XHSToYouTube:
         self._progress(0, "解析用户信息...")
         
         # 从 URL 提取用户标识（可能是加密后的 sec_user_id）
-        user_id_match = __import__('re').search(r'user/profile/([a-f0-9]+)', user_url)
+        user_id_match = re.search(r'user/profile/([a-f0-9]+)', user_url)
         if not user_id_match:
             raise ValueError(f"无法从 URL 解析用户标识: {user_url}")
         
         sec_user_id = user_id_match.group(1)
         self._log(f"[获取] 用户标识: {sec_user_id}")
         
-        # 读取 Cookie
-        cookies = {}
-        if COOKIES_FILE.exists():
-            with open(COOKIES_FILE) as f:
-                for line in f:
-                    if line.startswith('#') or not line.strip():
-                        continue
-                    parts = line.strip().split('\t')
-                    if len(parts) >= 7:
-                        cookies[parts[5]] = parts[6]
-            self._log(f"[获取] 已加载 {len(cookies)} 个 Cookie")
-        else:
-            self._log(f"[警告] 未找到 Cookie 文件: {COOKIES_FILE}")
+        # 读取 Cookie 和 headers
+        cookies = self._load_cookies()
+        self._log(f"[获取] 已加载 {len(cookies)} 个 Cookie")
         
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        }
+        headers = self._get_headers()
         
         self._progress(10, "获取用户主页...")
         

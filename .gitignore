@@ -31,6 +31,10 @@ Thumbs.db
 *.log
 test.txt
 test_videos.json
+test_fetch_result.json
+
+# 输出文件
+video_list.json
 
 # 开发上下文
 .dev_context/

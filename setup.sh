@@ -29,10 +29,10 @@ fi
 echo ""
 echo "[2/4] 安装 Python 依赖..."
 if command -v pip3 &> /dev/null; then
-    pip3 install yt-dlp google-api-python-client google-auth-oauthlib google-auth-httplib2 gradio --quiet
+    pip3 install google-api-python-client google-auth-oauthlib google-auth-httplib2 requests --quiet
     echo "    ✓ 依赖安装完成"
 elif python3 -m pip --version &> /dev/null; then
-    python3 -m pip install yt-dlp google-api-python-client google-auth-oauthlib google-auth-httplib2 gradio --quiet
+    python3 -m pip install google-api-python-client google-auth-oauthlib google-auth-httplib2 requests --quiet
     echo "    ✓ 依赖安装完成"
 else
     echo "    ⚠ 未找到 pip，请手动安装:"
@@ -45,7 +45,7 @@ else
     echo "    python3 get-pip.py"
     echo ""
     echo "    然后运行以下命令安装依赖:"
-    echo "    pip3 install yt-dlp google-api-python-client google-auth-oauthlib google-auth-httplib2 gradio"
+    echo "    pip3 install google-api-python-client google-auth-oauthlib google-auth-httplib2 requests"
     echo ""
     exit 1
 fi
