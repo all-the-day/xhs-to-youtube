@@ -915,7 +915,7 @@ class XHSToYouTube:
         if output_file:
             output_path = Path(output_file)
         else:
-            output_path = SCRIPT_DIR / f"user_videos_{user_id}.json"
+            output_path = SCRIPT_DIR / "video_list.json"
         
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
