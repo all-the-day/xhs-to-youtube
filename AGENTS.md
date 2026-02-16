@@ -7,7 +7,7 @@
 - OAuth 2.0 授权 YouTube 上传
 - 自动去除视频水印
 - 双语标题生成
-- 批量获取用户视频列表
+- 批量获取用户视频列表（URL 带 xsec_token 确保可访问）
 
 **版本**: 1.2.0
 
@@ -46,7 +46,7 @@ xhs-to-youtube/
 - `authorize_youtube_with_code(code)` - 使用授权码完成授权
 - `upload_to_youtube()` - 上传视频到 YouTube
 - `transfer()` - 完整搬运流程
-- `fetch_user_videos(user_url, output_file)` - 获取用户主页视频列表
+- `fetch_user_videos(user_url, output_file)` - 获取用户主页视频列表（URL 包含 xsec_token）
 
 ### 凭证状态类
 
@@ -109,7 +109,7 @@ python main.py transfer "小红书URL" --tags "vlog,life" --privacy unlisted
 # 保留本地视频
 python main.py transfer "小红书URL" --keep-video
 
-# 获取用户主页所有视频链接
+# 获取用户主页所有视频链接（默认输出到 video_list.json）
 python main.py fetch "https://www.xiaohongshu.com/user/profile/xxx"
 
 # 获取用户视频并保存到指定文件
