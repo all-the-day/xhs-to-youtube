@@ -35,6 +35,7 @@ test_fetch_result.json
 
 # 输出文件
 video_list.json
+uploaded.json
 
 # 开发上下文
 .dev_context/

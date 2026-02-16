@@ -5,6 +5,7 @@
 使用方法:
     python main.py transfer <小红书视频URL> --title-en "英文标题"
     python main.py fetch <用户主页URL> --output videos.json
+    python main.py batch --input video_list.json
 """
 
 import argparse
@@ -41,6 +42,19 @@ def cmd_fetch(args):
     )
 
 
+def cmd_batch(args):
+    """执行批量搬运"""
+    tool = XHSToYouTube()
+    tool.batch_transfer(
+        video_list_path=args.input,
+        interval_min=args.interval_min,
+        interval_max=args.interval_max,
+        privacy=args.privacy,
+        keep_video=args.keep_video,
+        skip_uploaded=not args.force
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="小红书视频搬运到 YouTube",
@@ -58,6 +72,15 @@ def main():
 
     # 获取用户视频并保存到指定文件
     python main.py fetch "https://www.xiaohongshu.com/user/profile/xxx" --output my_videos.json
+
+    # 批量上传视频列表（使用默认 video_list.json）
+    python main.py batch
+
+    # 批量上传指定文件，自定义间隔时间
+    python main.py batch --input my_videos.json --interval-min 15 --interval-max 45
+
+    # 强制重新上传所有视频（不跳过已上传）
+    python main.py batch --force
         """
     )
     
@@ -81,6 +104,22 @@ def main():
     fetch_parser.add_argument("url", help="小红书用户主页 URL")
     fetch_parser.add_argument("--output", "-o", help="输出文件路径 (默认: user_videos_{user_id}.json)")
     fetch_parser.set_defaults(func=cmd_fetch)
+    
+    # batch 子命令
+    batch_parser = subparsers.add_parser("batch", help="批量搬运视频列表")
+    batch_parser.add_argument("--input", "-i", help="视频列表文件路径 (默认: video_list.json)")
+    batch_parser.add_argument("--interval-min", type=int, default=10,
+                       help="最小间隔秒数 (默认: 10)")
+    batch_parser.add_argument("--interval-max", type=int, default=30,
+                       help="最大间隔秒数 (默认: 30)")
+    batch_parser.add_argument("--privacy", default="public",
+                       choices=["public", "unlisted", "private"],
+                       help="隐私设置 (默认: public)")
+    batch_parser.add_argument("--keep-video", action="store_true",
+                       help="上传后保留本地视频文件")
+    batch_parser.add_argument("--force", action="store_true",
+                       help="强制重新上传（不跳过已上传视频）")
+    batch_parser.set_defaults(func=cmd_batch)
     
     args = parser.parse_args()
     

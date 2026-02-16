@@ -8,8 +8,9 @@
 - 自动去除视频水印
 - 双语标题生成
 - 批量获取用户视频列表（URL 带 xsec_token 确保可访问）
+- 批量上传视频列表（随机间隔、自动跳过已上传）
 
-**版本**: 1.2.0
+**版本**: 1.4.0
 
 ## 技术栈
 
@@ -23,13 +24,15 @@
 xhs-to-youtube/
 ├── __init__.py       # Python 包初始化
 ├── core.py           # 核心逻辑类 XHSToYouTube
-├── main.py           # 命令行入口
+├── main.py           # 命令行入口（子命令：transfer/fetch/batch）
 ├── test_flow.py      # 测试套件
 ├── setup.sh          # 环境配置脚本
 ├── .gitignore        # Git 忽略配置
 ├── cookies.txt       # 小红书 Cookie (需配置)
 ├── credentials.json  # Google OAuth 凭证 (需配置)
 ├── token.json        # OAuth Token (自动生成)
+├── video_list.json   # fetch 默认输出文件
+├── uploaded.json     # 已上传记录 (自动生成)
 └── videos/           # 视频缓存目录
 ```
 
@@ -38,15 +41,38 @@ xhs-to-youtube/
 ### XHSToYouTube (`core.py`)
 
 主要方法：
-- `download_video(url)` - 下载小红书视频（自动选择无水印版本）
+- `download_video(url, title=None, description=None)` - 下载小红书视频（自动选择无水印版本，支持传入已有元数据避免重复请求）
 - `_select_best_video_stream(page_text)` - 解析视频流并选择无水印版本
 - `get_youtube_service()` - 获取 YouTube API 服务
 - `authorize_youtube()` - OAuth 授权（本地服务器方式）
 - `get_authorization_url()` - 获取授权 URL
 - `authorize_youtube_with_code(code)` - 使用授权码完成授权
 - `upload_to_youtube()` - 上传视频到 YouTube
-- `transfer()` - 完整搬运流程
-- `fetch_user_videos(user_url, output_file)` - 获取用户主页视频列表（URL 包含 xsec_token）
+- `transfer(xhs_url, title=None, description=None, ...)` - 完整搬运流程
+- `fetch_user_videos(user_url, output_file)` - 获取用户主页视频列表
+- `batch_transfer(video_list_path, ...)` - 批量搬运视频列表
+- `_load_uploaded_records()` - 加载已上传记录
+- `_save_uploaded_record(record)` - 保存上传记录
+- `_is_uploaded(note_id)` - 检查视频是否已上传
+
+### fetch_user_videos 返回结构
+
+```json
+{
+  "user_id": "用户ID",
+  "fetch_time": "2026-02-16 09:27:07",
+  "total_count": 4,
+  "videos": [
+    {
+      "note_id": "笔记ID",
+      "title": "视频标题",
+      "url": "https://www.xiaohongshu.com/explore/xxx?xsec_token=xxx&xsec_source=pc_user",
+      "xsec_token": "访问令牌",
+      "desc": "视频描述"
+    }
+  ]
+}
+```
 
 ### 凭证状态类
 
@@ -58,6 +84,37 @@ class CredentialStatus:
     valid: bool    # 是否有效
     message: str   # 状态消息
     path: str      # 文件路径
+```
+
+### 上传记录类
+
+```python
+@dataclass
+class UploadRecord:
+    note_id: str       # 小红书笔记 ID
+    youtube_id: str    # YouTube 视频 ID
+    youtube_url: str   # YouTube 视频链接
+    title: str         # 视频标题
+    uploaded_at: str   # 上传时间
+```
+
+### batch_transfer 返回结构
+
+```json
+{
+  "success": true,
+  "total": 10,
+  "skipped": 2,
+  "success_count": 7,
+  "failed": 1,
+  "failed_videos": [
+    {
+      "note_id": "xxx",
+      "title": "失败的视频标题",
+      "error": "错误信息"
+    }
+  ]
+}
 ```
 
 ## 去水印功能
@@ -114,6 +171,15 @@ python main.py fetch "https://www.xiaohongshu.com/user/profile/xxx"
 
 # 获取用户视频并保存到指定文件
 python main.py fetch "https://www.xiaohongshu.com/user/profile/xxx" --output my_videos.json
+
+# 批量上传视频列表（使用默认 video_list.json）
+python main.py batch
+
+# 批量上传指定文件，自定义间隔时间
+python main.py batch --input my_videos.json --interval-min 15 --interval-max 45
+
+# 强制重新上传所有视频（不跳过已上传）
+python main.py batch --force
 ```
 
 ## 配置文件
@@ -180,14 +246,6 @@ master        # 主分支，稳定版本（测试通过）
 └── docs/xxx       # 文档分支（保留）
 ```
 
-### 当前分支
-
-| 分支 | 说明 |
-|------|------|
-| master | 主分支 |
-| feature/fetch-user-videos | 获取用户视频列表功能 |
-| remove-gui | 移除 GUI 功能 |
-
 ### 分支命名规范
 
 | 类型 | 命名 | 示例 |
@@ -234,7 +292,7 @@ master        # 主分支，稳定版本（测试通过）
    ```bash
    git checkout master
    git merge feature/新功能名
-   # 功能分支保留，不删除
+   # 删除功能分支
    ```
 
 5. **清理上下文**
@@ -247,7 +305,6 @@ master        # 主分支，稳定版本（测试通过）
 - [ ] 代码已提交
 - [ ] 回归测试通过 (`python test_flow.py`)
 - [ ] 无遗留的调试代码
-- [ ] 文档已更新（如需要）
 
 ## 依赖版本
 
@@ -280,9 +337,12 @@ python test_flow.py
 - `cookies.txt` - 小红书 Cookie
 - `credentials.json` - Google OAuth 凭证
 - `token.json` - OAuth Token
-- `videos/` - 视频缓存
+- `videos/*.mp4` - 视频缓存
+- `video_list.json` - fetch 输出文件
+- `uploaded.json` - 已上传记录
 - `__pycache__/` - Python 缓存
 - `venv/` - 虚拟环境
+- `.dev_context/` - 开发上下文
 
 ## 测试参考
 

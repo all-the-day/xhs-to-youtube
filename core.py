@@ -8,9 +8,12 @@ import json
 import os
 import re
 import sys
+import random
+import time
 from pathlib import Path
-from typing import Callable, Optional, Dict, Any
+from typing import Callable, Optional, Dict, Any, List
 from dataclasses import dataclass
+from datetime import datetime
 
 # YouTube API 相关导入
 try:
@@ -30,6 +33,8 @@ COOKIES_FILE = SCRIPT_DIR / "cookies.txt"
 CREDENTIALS_FILE = SCRIPT_DIR / "credentials.json"
 TOKEN_FILE = SCRIPT_DIR / "token.json"
 VIDEOS_DIR = SCRIPT_DIR / "videos"
+UPLOADED_FILE = SCRIPT_DIR / "uploaded.json"
+VIDEO_LIST_FILE = SCRIPT_DIR / "video_list.json"
 
 # YouTube API 权限范围
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
@@ -43,6 +48,16 @@ class CredentialStatus:
     valid: bool
     message: str
     path: str
+
+
+@dataclass
+class UploadRecord:
+    """上传记录"""
+    note_id: str
+    youtube_id: str
+    youtube_url: str
+    title: str
+    uploaded_at: str
 
 
 class XHSToYouTube:
@@ -303,10 +318,17 @@ class XHSToYouTube:
         self._log(f"[下载] 未找到无水印版本，使用: {best['desc']}")
         return best['url'], info
 
-    def download_video(self, url: str) -> dict:
+    def download_video(self, url: str, title: str = None, description: str = None) -> dict:
         """
         下载小红书视频（使用自定义下载方法）
-        返回包含视频路径、标题、描述的字典
+        
+        Args:
+            url: 小红书视频 URL
+            title: 可选的视频标题（如果提供则跳过从页面提取）
+            description: 可选的视频描述（如果提供则跳过从页面提取）
+            
+        Returns:
+            包含视频路径、标题、描述的字典
         """
         import requests
         import codecs
@@ -334,35 +356,38 @@ class XHSToYouTube:
             resp = requests.get(url, cookies=cookies, headers=headers, allow_redirects=True, timeout=30)
             
             # 提取视频信息
-            title = "未知标题"
-            desc = ""
+            video_title = title  # 使用传入的 title 或 None
+            video_desc = description  # 使用传入的 description 或 None
             duration = 0
             
-            # 提取标题（优先从 HTML title 获取）
-            html_title_match = re.search(r'<title>([^<]+)</title>', resp.text)
-            if html_title_match:
-                html_title = html_title_match.group(1)
-                # 格式通常是 "标题 - 小红书"，移除后缀
-                if ' - 小红书' in html_title:
-                    title = html_title.split(' - 小红书')[0].strip()
-                elif '小红书' in html_title and len(html_title) > 10:
-                    # 如果包含小红书但不是后缀格式，尝试提取前面部分
-                    title = html_title.replace(' - 小红书', '').replace('小红书', '').strip()
-                else:
-                    title = html_title.strip()
+            # 如果没有提供 title 或 description，从页面提取
+            if not video_title:
+                # 提取标题（优先从 HTML title 获取）
+                html_title_match = re.search(r'<title>([^<]+)</title>', resp.text)
+                if html_title_match:
+                    html_title = html_title_match.group(1)
+                    # 格式通常是 "标题 - 小红书"，移除后缀
+                    if ' - 小红书' in html_title:
+                        video_title = html_title.split(' - 小红书')[0].strip()
+                    elif '小红书' in html_title and len(html_title) > 10:
+                        # 如果包含小红书但不是后缀格式，尝试提取前面部分
+                        video_title = html_title.replace(' - 小红书', '').replace('小红书', '').strip()
+                    else:
+                        video_title = html_title.strip()
+                
+                # 如果 HTML title 无效，尝试从 JSON 中获取
+                if not video_title or video_title == "未知标题" or 'ICP' in video_title:
+                    title_match = re.search(r'"displayTitle"\s*:\s*"([^"]*)"', resp.text)
+                    if title_match and title_match.group(1):
+                        video_title = title_match.group(1)
+                    else:
+                        video_title = "未知标题"
             
-            # 如果 HTML title 无效，尝试从 JSON 中获取
-            if not title or title == "未知标题" or 'ICP' in title:
-                title_match = re.search(r'"displayTitle"\s*:\s*"([^"]*)"', resp.text)
-                if title_match and title_match.group(1):
-                    title = title_match.group(1)
-                else:
-                    title = "未知标题"
-            
-            # 提取描述
-            desc_match = re.search(r'"desc"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', resp.text)
-            if desc_match:
-                desc = desc_match.group(1)
+            if not video_desc:
+                # 提取描述
+                desc_match = re.search(r'"desc"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', resp.text)
+                if desc_match:
+                    video_desc = desc_match.group(1)
             
             # 提取时长（小红书的 duration 可能是秒或毫秒）
             duration_match = re.search(r'"duration"\s*:\s*(\d+)', resp.text)
@@ -378,7 +403,7 @@ class XHSToYouTube:
                 self._log("[错误] 未找到视频链接，可能是图文笔记或需要登录")
                 raise Exception("未找到视频链接，请确认链接是视频内容")
             
-            self._log(f"[下载] 标题: {title}")
+            self._log(f"[下载] 标题: {video_title}")
             self._log(f"[下载] 选择视频流: {video_info}")
             
             # 下载视频
@@ -408,8 +433,8 @@ class XHSToYouTube:
             
             result = {
                 'video_path': str(video_path),
-                'title': title,
-                'description': desc,
+                'title': video_title,
+                'description': video_desc or '',
                 'uploader': '',
                 'duration': duration,
             }
@@ -706,6 +731,8 @@ class XHSToYouTube:
     def transfer(
         self,
         xhs_url: str,
+        title: str = None,
+        description: str = None,
         english_title: str = None,
         custom_desc: str = None,
         tags: list = None,
@@ -714,13 +741,23 @@ class XHSToYouTube:
     ) -> dict:
         """
         完整的搬运流程
+        
+        Args:
+            xhs_url: 小红书视频 URL
+            title: 可选的视频标题（如果提供则跳过从页面提取）
+            description: 可选的视频描述（如果提供则跳过从页面提取）
+            english_title: 英文标题（生成双语标题）
+            custom_desc: 自定义视频描述
+            tags: 视频标签列表
+            privacy: 隐私设置
+            keep_video: 是否保留本地视频文件
         """
         self._log("=" * 60)
         self._log("小红书 → YouTube 视频搬运工具")
         self._log("=" * 60)
         
         # 1. 下载视频
-        video_info = self.download_video(xhs_url)
+        video_info = self.download_video(xhs_url, title, description)
         
         # 2. 生成标题和描述
         title = self.generate_bilingual_title(video_info['title'], english_title)
@@ -930,3 +967,206 @@ class XHSToYouTube:
         self._progress(100, "完成!")
         
         return result
+
+    def _load_uploaded_records(self) -> Dict[str, Dict]:
+        """
+        加载已上传记录
+        
+        Returns:
+            note_id -> record 的字典
+        """
+        if UPLOADED_FILE.exists():
+            try:
+                with open(UPLOADED_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get('records', {})
+            except (json.JSONDecodeError, KeyError):
+                return {}
+        return {}
+
+    def _save_uploaded_record(self, record: UploadRecord) -> None:
+        """
+        保存上传记录
+        
+        Args:
+            record: 上传记录对象
+        """
+        records = self._load_uploaded_records()
+        records[record.note_id] = {
+            'youtube_id': record.youtube_id,
+            'youtube_url': record.youtube_url,
+            'title': record.title,
+            'uploaded_at': record.uploaded_at
+        }
+        
+        with open(UPLOADED_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'records': records}, f, ensure_ascii=False, indent=2)
+
+    def _is_uploaded(self, note_id: str) -> Optional[Dict]:
+        """
+        检查视频是否已上传
+        
+        Args:
+            note_id: 小红书笔记 ID
+            
+        Returns:
+            如果已上传返回记录字典，否则返回 None
+        """
+        records = self._load_uploaded_records()
+        return records.get(note_id)
+
+    def batch_transfer(
+        self,
+        video_list_path: str = None,
+        interval_min: int = 10,
+        interval_max: int = 30,
+        privacy: str = "public",
+        keep_video: bool = False,
+        skip_uploaded: bool = True
+    ) -> Dict[str, Any]:
+        """
+        批量搬运视频
+        
+        Args:
+            video_list_path: video_list.json 文件路径（默认使用 video_list.json）
+            interval_min: 最小间隔秒数
+            interval_max: 最大间隔秒数
+            privacy: 隐私设置
+            keep_video: 是否保留本地视频
+            skip_uploaded: 是否跳过已上传视频
+            
+        Returns:
+            批量处理结果统计
+        """
+        self._log("=" * 60)
+        self._log("小红书 → YouTube 批量搬运工具")
+        self._log("=" * 60)
+        
+        # 1. 确定视频列表文件路径
+        if video_list_path:
+            list_path = Path(video_list_path)
+        else:
+            list_path = VIDEO_LIST_FILE
+        
+        if not list_path.exists():
+            error_msg = f"视频列表文件不存在: {list_path}"
+            self._log(f"[错误] {error_msg}")
+            return {'success': False, 'error': error_msg}
+        
+        # 2. 加载视频列表
+        self._log(f"[批量] 加载视频列表: {list_path}")
+        with open(list_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        videos = data.get('videos', [])
+        if not videos:
+            self._log("[警告] 视频列表为空")
+            return {'success': True, 'total': 0, 'skipped': 0, 'success_count': 0, 'failed': 0}
+        
+        self._log(f"[批量] 共 {len(videos)} 个视频待处理")
+        
+        # 3. 加载已上传记录
+        uploaded_records = self._load_uploaded_records() if skip_uploaded else {}
+        if uploaded_records:
+            self._log(f"[批量] 已有 {len(uploaded_records)} 个上传记录")
+        
+        # 4. 统计信息
+        results = {
+            'success': True,
+            'total': len(videos),
+            'skipped': 0,
+            'success_count': 0,
+            'failed': 0,
+            'failed_videos': []
+        }
+        
+        # 5. 遍历处理
+        for i, video in enumerate(videos):
+            note_id = video.get('note_id', '')
+            video_title = video.get('title', '')
+            video_desc = video.get('desc', '')
+            url = video.get('url', '')
+            
+            self._log("")
+            self._log("-" * 50)
+            self._log(f"[批量] 处理第 {i+1}/{len(videos)} 个: {video_title or '未知标题'}")
+            
+            # 检查是否已上传
+            if skip_uploaded and note_id in uploaded_records:
+                record = uploaded_records[note_id]
+                self._log(f"[跳过] 已上传过: {record.get('youtube_url', '')}")
+                results['skipped'] += 1
+                continue
+            
+            # 检查是否有 URL
+            if not url:
+                self._log("[失败] 缺少视频 URL")
+                results['failed'] += 1
+                results['failed_videos'].append({
+                    'note_id': note_id,
+                    'title': video_title,
+                    'error': '缺少视频 URL'
+                })
+                continue
+            
+            try:
+                # 随机间隔（第一个视频不等待）
+                if i > 0:
+                    delay = random.randint(interval_min, interval_max)
+                    self._log(f"[等待] {delay} 秒后继续...")
+                    time.sleep(delay)
+                
+                # 执行搬运，传递已有的 title 和 desc
+                result = self.transfer(
+                    xhs_url=url,
+                    title=video_title,
+                    description=video_desc,
+                    privacy=privacy,
+                    keep_video=keep_video
+                )
+                
+                # 记录上传结果
+                record = UploadRecord(
+                    note_id=note_id,
+                    youtube_id=result['video_id'],
+                    youtube_url=result['video_url'],
+                    title=video_title or '未知标题',
+                    uploaded_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                )
+                self._save_uploaded_record(record)
+                uploaded_records[note_id] = {
+                    'youtube_id': record.youtube_id,
+                    'youtube_url': record.youtube_url,
+                    'title': record.title,
+                    'uploaded_at': record.uploaded_at
+                }
+                
+                results['success_count'] += 1
+                self._log(f"[成功] 上传完成: {result['video_url']}")
+                
+            except Exception as e:
+                self._log(f"[失败] {video_title or '未知标题'}: {e}")
+                results['failed'] += 1
+                results['failed_videos'].append({
+                    'note_id': note_id,
+                    'title': video_title or '未知标题',
+                    'error': str(e)
+                })
+        
+        # 6. 输出统计
+        self._log("")
+        self._log("=" * 60)
+        self._log("批量搬运完成!")
+        self._log("=" * 60)
+        self._log(f"总计: {results['total']} 个视频")
+        self._log(f"成功: {results['success_count']} 个")
+        self._log(f"跳过: {results['skipped']} 个")
+        self._log(f"失败: {results['failed']} 个")
+        
+        if results['failed_videos']:
+            self._log("")
+            self._log("失败的视频:")
+            for v in results['failed_videos']:
+                self._log(f"  - {v['title']}: {v['error']}")
+        
+        return results
