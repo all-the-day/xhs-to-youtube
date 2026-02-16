@@ -266,11 +266,13 @@ python test_flow.py
 ```
 
 测试内容包括：
-1. 凭证状态检查
+1. 凭证状态检查（验证 YouTube API 连接，不上传视频）
 2. 视频流选择（去水印）
 3. 标题提取
 4. 视频下载
-5. 完整搬运流程
+5. 搬运流程准备检查（验证 API 连接和元数据生成，不上传视频）
+
+**注意：** 测试不会实际上传视频到 YouTube，仅验证 API 认证和下载功能。当前 OAuth scope 仅有 `youtube.upload` 权限，如需读取频道信息需要添加 `youtube.readonly` 权限。
 
 ## .gitignore
 
