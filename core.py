@@ -884,12 +884,20 @@ class XHSToYouTube:
             if note_type == 'video':
                 note_id = card.get('noteId', '')
                 title = card.get('displayTitle', '') or card.get('title', '')
+                xsec_token = card.get('xsecToken', '')
                 
                 if note_id:
+                    # 生成带 xsec_token 的 URL，确保可以访问
+                    if xsec_token:
+                        url = f'https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}&xsec_source=pc_user'
+                    else:
+                        url = f'https://www.xiaohongshu.com/explore/{note_id}'
+                    
                     videos.append({
                         'note_id': note_id,
                         'title': title,
-                        'url': f'https://www.xiaohongshu.com/explore/{note_id}',
+                        'url': url,
+                        'xsec_token': xsec_token,
                         'desc': card.get('desc', '')
                     })
         
