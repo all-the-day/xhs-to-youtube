@@ -3,8 +3,8 @@
 小红书视频搬运到 YouTube 的自动化脚本
 
 使用方法:
-    python main.py <小红书视频URL> --title-en "英文标题"
-    python main.py <小红书视频URL> --title-en "English Title" --desc "视频描述"
+    python main.py transfer <小红书视频URL> --title-en "英文标题"
+    python main.py fetch <用户主页URL> --output videos.json
 """
 
 import argparse
@@ -13,38 +13,8 @@ import sys
 from core import XHSToYouTube
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="小红书视频搬运到 YouTube",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-示例:
-    # 基本用法（使用原标题）
-    python main.py "https://www.xiaohongshu.com/explore/xxx"
-
-    # 添加英文标题（双语标题）
-    python main.py "https://www.xiaohongshu.com/explore/xxx" --title-en "My English Title"
-
-    # 自定义标签和隐私设置
-    python main.py "https://www.xiaohongshu.com/explore/xxx" --tags "vlog,life,daily" --privacy unlisted
-
-    # 保留本地视频文件
-    python main.py "https://www.xiaohongshu.com/explore/xxx" --keep-video
-        """
-    )
-    
-    parser.add_argument("url", help="小红书视频 URL")
-    parser.add_argument("--title-en", help="英文标题（生成双语标题）")
-    parser.add_argument("--desc", help="自定义视频描述")
-    parser.add_argument("--tags", help="视频标签，用逗号分隔")
-    parser.add_argument("--privacy", default="public", 
-                       choices=["public", "unlisted", "private"],
-                       help="隐私设置 (默认: public)")
-    parser.add_argument("--keep-video", action="store_true",
-                       help="上传后保留本地视频文件")
-    
-    args = parser.parse_args()
-    
+def cmd_transfer(args):
+    """执行视频搬运"""
     # 处理标签
     tags = None
     if args.tags:
@@ -60,6 +30,67 @@ def main():
         privacy=args.privacy,
         keep_video=args.keep_video
     )
+
+
+def cmd_fetch(args):
+    """获取用户视频列表"""
+    tool = XHSToYouTube()
+    tool.fetch_user_videos(
+        user_url=args.url,
+        output_file=args.output
+    )
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="小红书视频搬运到 YouTube",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+示例:
+    # 搬运单个视频
+    python main.py transfer "https://www.xiaohongshu.com/explore/xxx"
+
+    # 搬运视频并添加英文标题
+    python main.py transfer "https://www.xiaohongshu.com/explore/xxx" --title-en "My English Title"
+
+    # 获取用户主页所有视频链接
+    python main.py fetch "https://www.xiaohongshu.com/user/profile/xxx"
+
+    # 获取用户视频并保存到指定文件
+    python main.py fetch "https://www.xiaohongshu.com/user/profile/xxx" --output my_videos.json
+        """
+    )
+    
+    subparsers = parser.add_subparsers(dest="command", help="可用命令")
+    
+    # transfer 子命令
+    transfer_parser = subparsers.add_parser("transfer", help="搬运视频到 YouTube")
+    transfer_parser.add_argument("url", help="小红书视频 URL")
+    transfer_parser.add_argument("--title-en", help="英文标题（生成双语标题）")
+    transfer_parser.add_argument("--desc", help="自定义视频描述")
+    transfer_parser.add_argument("--tags", help="视频标签，用逗号分隔")
+    transfer_parser.add_argument("--privacy", default="public", 
+                       choices=["public", "unlisted", "private"],
+                       help="隐私设置 (默认: public)")
+    transfer_parser.add_argument("--keep-video", action="store_true",
+                       help="上传后保留本地视频文件")
+    transfer_parser.set_defaults(func=cmd_transfer)
+    
+    # fetch 子命令
+    fetch_parser = subparsers.add_parser("fetch", help="获取用户视频列表")
+    fetch_parser.add_argument("url", help="小红书用户主页 URL")
+    fetch_parser.add_argument("--output", "-o", help="输出文件路径 (默认: user_videos_{user_id}.json)")
+    fetch_parser.set_defaults(func=cmd_fetch)
+    
+    args = parser.parse_args()
+    
+    # 如果没有指定子命令，显示帮助
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+    
+    # 执行对应的命令
+    args.func(args)
 
 
 if __name__ == "__main__":

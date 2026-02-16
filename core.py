@@ -739,3 +739,155 @@ class XHSToYouTube:
         self._log(f"视频链接: {result['video_url']}")
         
         return result
+
+    def fetch_user_videos(self, user_url: str, output_file: str = None) -> dict:
+        """
+        获取小红书用户主页的所有视频链接
+        
+        Args:
+            user_url: 用户主页 URL (如 https://www.xiaohongshu.com/user/profile/xxx)
+            output_file: 输出文件路径（可选）
+            
+        Returns:
+            包含用户信息和视频列表的字典
+        """
+        import requests
+        from datetime import datetime
+        
+        self._log("=" * 50)
+        self._log("[获取] 开始获取用户视频列表...")
+        self._log("=" * 50)
+        self._progress(0, "解析用户信息...")
+        
+        # 提取用户 ID
+        user_id_match = __import__('re').search(r'user/profile/([a-f0-9]+)', user_url)
+        if not user_id_match:
+            raise ValueError(f"无法从 URL 解析用户 ID: {user_url}")
+        
+        user_id = user_id_match.group(1)
+        self._log(f"[获取] 用户 ID: {user_id}")
+        
+        # 读取 Cookie
+        cookies = {}
+        if COOKIES_FILE.exists():
+            with open(COOKIES_FILE) as f:
+                for line in f:
+                    if line.startswith('#') or not line.strip():
+                        continue
+                    parts = line.strip().split('\t')
+                    if len(parts) >= 7:
+                        cookies[parts[5]] = parts[6]
+            self._log(f"[获取] 已加载 {len(cookies)} 个 Cookie")
+        else:
+            self._log(f"[警告] 未找到 Cookie 文件: {COOKIES_FILE}")
+        
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        }
+        
+        self._progress(10, "获取用户主页...")
+        
+        # 获取用户主页 HTML
+        page_url = f"https://www.xiaohongshu.com/user/profile/{user_id}"
+        resp = requests.get(page_url, cookies=cookies, headers=headers, timeout=30)
+        
+        # 提取 __INITIAL_STATE__ JSON 数据
+        start_marker = 'window.__INITIAL_STATE__='
+        start_idx = resp.text.find(start_marker)
+        
+        if start_idx == -1:
+            raise ValueError("无法从页面提取数据，可能需要登录")
+        
+        json_start = start_idx + len(start_marker)
+        json_text = resp.text[json_start:]
+        
+        # 替换 JavaScript 的 undefined 为 null（JSON 不支持 undefined）
+        json_text = json_text.replace(':undefined', ':null')
+        json_text = json_text.replace(',undefined', ',null')
+        
+        # 解析 JSON
+        decoder = json.JSONDecoder()
+        try:
+            state, _ = decoder.raw_decode(json_text)
+        except json.JSONDecodeError as e:
+            self._log(f"[错误] JSON 解析失败: {e}")
+            raise ValueError(f"解析页面数据失败: {e}")
+        
+        self._progress(50, "解析视频列表...")
+        
+        # 提取笔记列表
+        videos = []
+        
+        # 解析 Vue 响应式对象结构
+        def unwrap_vue(obj, depth=0):
+            """解包 Vue 响应式对象"""
+            if depth > 5 or not obj:
+                return obj
+            if isinstance(obj, dict):
+                # Vue 3 响应式对象
+                if '_rawValue' in obj:
+                    return unwrap_vue(obj['_rawValue'], depth + 1)
+                if '_value' in obj:
+                    return unwrap_vue(obj['_value'], depth + 1)
+            return obj
+        
+        # 提取笔记
+        notes_data = None
+        if 'user' in state and 'notes' in state['user']:
+            notes_data = unwrap_vue(state['user']['notes'])
+        
+        # 解析笔记数组（可能是嵌套数组）
+        def extract_notes(obj):
+            """递归提取笔记"""
+            notes = []
+            if isinstance(obj, list):
+                for item in obj:
+                    if isinstance(item, dict) and 'noteCard' in item:
+                        # 直接是笔记对象
+                        notes.append(item)
+                    elif isinstance(item, list):
+                        # 嵌套数组
+                        notes.extend(extract_notes(item))
+            return notes
+        
+        notes = extract_notes(notes_data) if notes_data else []
+        
+        # 筛选视频类型
+        for note in notes:
+            card = note.get('noteCard', {})
+            note_type = card.get('type', '')
+            if note_type == 'video':
+                note_id = card.get('noteId', '')
+                title = card.get('displayTitle', '') or card.get('title', '')
+                
+                if note_id:
+                    videos.append({
+                        'note_id': note_id,
+                        'title': title,
+                        'url': f'https://www.xiaohongshu.com/explore/{note_id}',
+                        'desc': card.get('desc', '')
+                    })
+        
+        self._log(f'[获取] 找到 {len(videos)} 个视频')
+        
+        # 构建结果
+        result = {
+            "user_id": user_id,
+            "fetch_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "total_count": len(videos),
+            "videos": videos
+        }
+        
+        # 保存到文件
+        if output_file:
+            output_path = Path(output_file)
+        else:
+            output_path = SCRIPT_DIR / f"user_videos_{user_id}.json"
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        
+        self._log(f"[获取] 已保存到: {output_path}")
+        self._progress(100, "完成!")
+        
+        return result
