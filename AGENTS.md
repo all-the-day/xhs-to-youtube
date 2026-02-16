@@ -7,8 +7,9 @@
 - OAuth 2.0 授权 YouTube 上传
 - 自动去除视频水印
 - 双语标题生成
+- 批量获取用户视频列表
 
-**版本**: 1.1.0
+**版本**: 1.2.0
 
 ## 技术栈
 
@@ -45,6 +46,7 @@ xhs-to-youtube/
 - `authorize_youtube_with_code(code)` - 使用授权码完成授权
 - `upload_to_youtube()` - 上传视频到 YouTube
 - `transfer()` - 完整搬运流程
+- `fetch_user_videos(user_url, output_file)` - 获取用户主页视频列表
 
 ### 凭证状态类
 
@@ -95,23 +97,40 @@ bash setup.sh
 ### 命令行使用
 
 ```bash
-# 基本用法（默认公开，自动去水印）
-python main.py "https://www.xiaohongshu.com/explore/xxx"
+# 搬运单个视频（默认公开，自动去水印）
+python main.py transfer "https://www.xiaohongshu.com/explore/xxx"
 
-# 添加英文标题（生成双语标题）
-python main.py "小红书URL" --title-en "English Title"
+# 搬运视频并添加英文标题（生成双语标题）
+python main.py transfer "小红书URL" --title-en "English Title"
 
 # 自定义标签和隐私设置
-python main.py "小红书URL" --tags "vlog,life" --privacy unlisted
+python main.py transfer "小红书URL" --tags "vlog,life" --privacy unlisted
 
 # 保留本地视频
-python main.py "小红书URL" --keep-video
+python main.py transfer "小红书URL" --keep-video
+
+# 获取用户主页所有视频链接
+python main.py fetch "https://www.xiaohongshu.com/user/profile/xxx"
+
+# 获取用户视频并保存到指定文件
+python main.py fetch "https://www.xiaohongshu.com/user/profile/xxx" --output my_videos.json
 ```
 
 ## 配置文件
 
 ### cookies.txt
-小红书 Cookie 文件，Netscape 格式。使用浏览器扩展（如 EditThisCookie）导出。
+小红书 Cookie 文件，Netscape 格式。使用浏览器扩展导出。
+
+**导出方法：**
+1. 登录小红书网站
+2. 使用 Cookie Editor 等扩展导出 Cookie
+3. 选择 JSON 格式导出
+4. 转换为 Netscape 格式保存
+
+**Netscape 格式示例：**
+```
+xiaohongshu.com	TRUE	/	FALSE	1802674392	a1	cookie_value
+```
 
 ### credentials.json
 Google Cloud Console 下载的 OAuth 2.0 客户端凭证：
@@ -160,6 +179,14 @@ master        # 主分支，稳定版本（测试通过）
 ├── refactor/xxx   # 重构分支（保留）
 └── docs/xxx       # 文档分支（保留）
 ```
+
+### 当前分支
+
+| 分支 | 说明 |
+|------|------|
+| master | 主分支 |
+| feature/fetch-user-videos | 获取用户视频列表功能 |
+| remove-gui | 移除 GUI 功能 |
 
 ### 分支命名规范
 
