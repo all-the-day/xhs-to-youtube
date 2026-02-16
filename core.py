@@ -759,13 +759,13 @@ class XHSToYouTube:
         self._log("=" * 50)
         self._progress(0, "解析用户信息...")
         
-        # 提取用户 ID
+        # 从 URL 提取用户标识（可能是加密后的 sec_user_id）
         user_id_match = __import__('re').search(r'user/profile/([a-f0-9]+)', user_url)
         if not user_id_match:
-            raise ValueError(f"无法从 URL 解析用户 ID: {user_url}")
+            raise ValueError(f"无法从 URL 解析用户标识: {user_url}")
         
-        user_id = user_id_match.group(1)
-        self._log(f"[获取] 用户 ID: {user_id}")
+        sec_user_id = user_id_match.group(1)
+        self._log(f"[获取] 用户标识: {sec_user_id}")
         
         # 读取 Cookie
         cookies = {}
@@ -788,7 +788,7 @@ class XHSToYouTube:
         self._progress(10, "获取用户主页...")
         
         # 获取用户主页 HTML
-        page_url = f"https://www.xiaohongshu.com/user/profile/{user_id}"
+        page_url = f"https://www.xiaohongshu.com/user/profile/{sec_user_id}"
         resp = requests.get(page_url, cookies=cookies, headers=headers, timeout=30)
         
         # 提取 __INITIAL_STATE__ JSON 数据
@@ -812,6 +812,31 @@ class XHSToYouTube:
         except json.JSONDecodeError as e:
             self._log(f"[错误] JSON 解析失败: {e}")
             raise ValueError(f"解析页面数据失败: {e}")
+        
+        # 从页面数据中提取真实的 user_id
+        user_id = sec_user_id  # 默认使用 URL 中的 ID
+        if 'user' in state and 'userInfo' in state['user']:
+            user_info = state['user']['userInfo']
+            if isinstance(user_info, dict) and 'userId' in user_info:
+                user_id = user_info['userId']
+                self._log(f"[获取] 真实用户 ID: {user_id}")
+        
+        # 如果真实 user_id 与 URL 中的不同，用真实 user_id 重新请求
+        # 因为用 sec_user_id 请求时，笔记数据可能为空
+        if user_id != sec_user_id:
+            self._log(f"[获取] 使用真实用户 ID 重新请求...")
+            page_url = f"https://www.xiaohongshu.com/user/profile/{user_id}"
+            resp = requests.get(page_url, cookies=cookies, headers=headers, timeout=30)
+            
+            # 重新解析 JSON
+            start_idx = resp.text.find(start_marker)
+            if start_idx != -1:
+                json_text = resp.text[start_idx + len(start_marker):]
+                json_text = json_text.replace(':undefined', ':null').replace(',undefined', ',null')
+                try:
+                    state, _ = decoder.raw_decode(json_text)
+                except json.JSONDecodeError:
+                    pass  # 使用之前解析的 state
         
         self._progress(50, "解析视频列表...")
         
