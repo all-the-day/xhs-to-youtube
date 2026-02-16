@@ -333,16 +333,28 @@ python test_flow.py
 
 ## .gitignore
 
-敏感文件已配置忽略：
+敏感文件和生成文件已配置忽略：
+
+**敏感配置文件：**
 - `cookies.txt` - 小红书 Cookie
 - `credentials.json` - Google OAuth 凭证
 - `token.json` - OAuth Token
-- `videos/*.mp4` - 视频缓存
+
+**生成文件：**
+- `videos/*.mp4`, `videos/*.webm` - 视频缓存
 - `video_list.json` - fetch 输出文件
 - `uploaded.json` - 已上传记录
+
+**开发文件：**
 - `__pycache__/` - Python 缓存
-- `venv/` - 虚拟环境
+- `venv/`, `env/` - 虚拟环境
 - `.dev_context/` - 开发上下文
+- `*.log` - 日志文件
+
+**测试文件：**
+- `test.txt` - 测试输出
+- `test_videos.json` - 测试视频列表
+- `test_fetch_result.json` - 测试获取结果
 
 ## 测试参考
 

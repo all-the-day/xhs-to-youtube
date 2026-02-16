@@ -135,7 +135,13 @@ class XHSToYouTube:
         # 检查 Cookie 文件
         if COOKIES_FILE.exists():
             content = COOKIES_FILE.read_text().strip()
-            if content and not content.startswith('#'):
+            # 检查是否有非注释的有效 Cookie 行（Netscape Cookie 格式允许以注释开头）
+            lines = content.split('\n')
+            has_valid_cookie = any(
+                line.strip() and not line.startswith('#')
+                for line in lines
+            )
+            if has_valid_cookie:
                 statuses['cookie'] = CredentialStatus(
                     name="小红书 Cookie",
                     exists=True,
