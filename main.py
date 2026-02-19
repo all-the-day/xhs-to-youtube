@@ -13,49 +13,9 @@
 import argparse
 import sys
 import json
-import subprocess
 from pathlib import Path
 
 from core import XHSToYouTube, COOKIES_FILE, TOKEN_FILE, CREDENTIALS_FILE
-
-
-def check_git_branch(allow_master=False):
-    """
-    检查当前 git 分支，非 dev 分支时提示切换
-    
-    Args:
-        allow_master: 是否允许在 master 分支执行（如 status 命令）
-    
-    Returns:
-        bool: 是否允许继续执行
-    """
-    try:
-        result = subprocess.run(
-            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        current_branch = result.stdout.strip()
-        
-        if current_branch == 'dev':
-            return True
-        
-        if allow_master and current_branch == 'master':
-            return True
-        
-        # 不在 dev 分支，提示用户切换
-        print(f"\n⚠️  当前分支: {current_branch}")
-        print("   新功能开发应在 dev 分支进行")
-        print(f"\n   执行以下命令切换分支：")
-        print(f"   git checkout dev")
-        print(f"   或创建新的功能分支：")
-        print(f"   git checkout -b feature/xxx\n")
-        return False
-        
-    except Exception:
-        # 如果不在 git 仓库中，允许继续
-        return True
 
 
 def cmd_transfer(args):
@@ -277,13 +237,6 @@ def main():
     # 如果没有指定子命令，显示帮助
     if not args.command:
         parser.print_help()
-        sys.exit(1)
-    
-    # 分支检查：只读命令允许在 master 执行，修改命令需要在 dev 分支
-    # status 是只读命令，允许在 master 执行
-    allow_master = (args.command == 'status')
-    
-    if not check_git_branch(allow_master=allow_master):
         sys.exit(1)
     
     # 执行对应的命令
