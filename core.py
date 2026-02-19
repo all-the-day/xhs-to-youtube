@@ -112,6 +112,54 @@ class XHSToYouTube:
                         cookies[parts[5]] = parts[6]
         return cookies
     
+    def update_cookie(self, content: str) -> bool:
+        """
+        更新小红书 Cookie（支持 JSON 和 Netscape 格式）
+        
+        Args:
+            content: Cookie 内容（JSON 或 Netscape 格式）
+            
+        Returns:
+            是否更新成功
+        """
+        content = content.strip()
+        
+        # 检测格式
+        if content.startswith('['):
+            # JSON 格式
+            try:
+                cookies_json = json.loads(content)
+                lines = ["# Netscape HTTP Cookie File", "# This file is generated for xhs-to-youtube", ""]
+                
+                for cookie in cookies_json:
+                    domain = cookie.get('domain', '').lstrip('.')
+                    path = cookie.get('path', '/')
+                    secure = cookie.get('secure', False)
+                    expiry = cookie.get('expirationDate', 0)
+                    name = cookie.get('name', '')
+                    value = cookie.get('value', '')
+                    
+                    if int(expiry) == 0:
+                        expiry_str = "0"
+                    else:
+                        expiry_str = str(int(expiry))
+                    
+                    line = f"{domain}\tTRUE\t{path}\t{str(secure).upper()}\t{expiry_str}\t{name}\t{value}"
+                    lines.append(line)
+                
+                with open(COOKIES_FILE, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(lines) + '\n')
+                
+                return True
+            except json.JSONDecodeError as e:
+                self._log(f"[错误] JSON 解析失败: {e}")
+                return False
+        else:
+            # Netscape 格式，直接保存
+            with open(COOKIES_FILE, 'w', encoding='utf-8') as f:
+                f.write(content + '\n')
+            return True
+    
     def _get_headers(self) -> Dict[str, str]:
         """
         获取默认请求头
@@ -801,13 +849,14 @@ class XHSToYouTube:
         
         return result
 
-    def fetch_user_videos(self, user_url: str, output_file: str = None) -> dict:
+    def fetch_user_videos(self, user_url: str, output_file: str = None, page_size: int = 10) -> dict:
         """
-        获取小红书用户主页的所有视频链接
+        获取小红书用户主页的视频链接（支持分页）
         
         Args:
             user_url: 用户主页 URL (如 https://www.xiaohongshu.com/user/profile/xxx)
             output_file: 输出文件路径（可选）
+            page_size: 每页获取数量（默认10条）
             
         Returns:
             包含用户信息和视频列表的字典
@@ -816,11 +865,11 @@ class XHSToYouTube:
         from datetime import datetime
         
         self._log("=" * 50)
-        self._log("[获取] 开始获取用户视频列表...")
+        self._log(f"[获取] 开始获取用户视频列表（每页{page_size}条）...")
         self._log("=" * 50)
         self._progress(0, "解析用户信息...")
         
-        # 从 URL 提取用户标识（可能是加密后的 sec_user_id）
+        # 从 URL 提取用户标识
         user_id_match = re.search(r'user/profile/([a-f0-9]+)', user_url)
         if not user_id_match:
             raise ValueError(f"无法从 URL 解析用户标识: {user_url}")
@@ -834,10 +883,149 @@ class XHSToYouTube:
         
         headers = self._get_headers()
         
-        self._progress(10, "获取用户主页...")
+        # 先获取用户主页获取真实 user_id
+        self._progress(10, "获取用户信息...")
+        page_url = f"https://www.xiaohongshu.com/user/profile/{sec_user_id}"
+        resp = requests.get(page_url, cookies=cookies, headers=headers, timeout=30)
+        
+        # 提取 __INITIAL_STATE__ 获取真实 user_id
+        start_marker = 'window.__INITIAL_STATE__='
+        start_idx = resp.text.find(start_marker)
+        user_id = sec_user_id
+        
+        if start_idx != -1:
+            json_start = start_idx + len(start_marker)
+            json_text = resp.text[json_start:]
+            json_text = json_text.replace(':undefined', ':null').replace(',undefined', ',null')
+            
+            decoder = json.JSONDecoder()
+            try:
+                state, _ = decoder.raw_decode(json_text)
+                if 'user' in state and 'userInfo' in state['user']:
+                    user_info = state['user']['userInfo']
+                    if isinstance(user_info, dict) and 'userId' in user_info:
+                        user_id = user_info['userId']
+                        self._log(f"[获取] 真实用户 ID: {user_id}")
+            except json.JSONDecodeError:
+                pass
+        
+        # 使用 API 分页获取视频列表
+        videos = []
+        cursor = ""
+        page_num = 1
+        
+        api_url = "https://edith.xiaohongshu.com/api/sns/web/v1/user_posted"
+        
+        # API 专用请求头
+        api_headers = {
+            **headers,
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Origin": "https://www.xiaohongshu.com",
+            "Referer": f"https://www.xiaohongshu.com/user/profile/{sec_user_id}",
+        }
+        
+        while True:
+            self._progress(10 + min(page_num * 20, 80), f"获取第 {page_num} 页...")
+            
+            params = {
+                "user_id": user_id,
+                "cursor": cursor,
+                "num": page_size,
+                "image_scenes": "FD_WM_WEBP,CRD_WM_WEBP"
+            }
+            
+            try:
+                api_resp = requests.get(api_url, params=params, cookies=cookies, headers=api_headers, timeout=30)
+                data = api_resp.json()
+            except Exception as e:
+                self._log(f"[错误] API 请求失败: {e}")
+                break
+            
+            if data.get('code') != 0:
+                self._log(f"[错误] API 返回: code={data.get('code')}, msg={data.get('msg', '未知错误')}")
+                # 如果 API 失败，尝试回退到页面解析方式
+                self._log("[获取] 尝试回退到页面解析方式...")
+                return self._fetch_user_videos_from_page(user_url, output_file, cookies, headers, sec_user_id, user_id)
+            
+            notes = data.get('data', {}).get('notes', [])
+            if not notes:
+                self._log(f"[获取] 第 {page_num} 页无数据，结束获取")
+                break
+            
+            # 提取视频
+            for note in notes:
+                note_type = note.get('type', '')
+                if note_type == 'video':
+                    note_id = note.get('noteId', '')
+                    title = note.get('displayTitle', '') or note.get('title', '')
+                    xsec_token = note.get('xsecToken', '')
+                    
+                    if note_id:
+                        if xsec_token:
+                            url = f'https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}&xsec_source=pc_user'
+                        else:
+                            url = f'https://www.xiaohongshu.com/explore/{note_id}'
+                        
+                        videos.append({
+                            'note_id': note_id,
+                            'title': title,
+                            'url': url,
+                            'xsec_token': xsec_token,
+                            'desc': note.get('desc', '')
+                        })
+            
+            self._log(f"[获取] 第 {page_num} 页: 获取 {len(notes)} 条笔记，其中 {sum(1 for n in notes if n.get('type') == 'video')} 个视频")
+            
+            # 检查是否还有更多
+            has_more = data.get('data', {}).get('has_more', False)
+            if not has_more:
+                self._log("[获取] 已获取所有视频")
+                break
+            
+            cursor = data.get('data', {}).get('cursor', '')
+            page_num += 1
+            
+            # 防止无限循环
+            if page_num > 100:
+                self._log("[警告] 达到最大页数限制")
+                break
+        
+        self._log(f'[获取] 共找到 {len(videos)} 个视频')
+        
+        # 构建结果
+        result = {
+            "user_id": user_id,
+            "fetch_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "total_count": len(videos),
+            "videos": videos
+        }
+        
+        # 保存到文件
+        if output_file:
+            output_path = Path(output_file)
+        else:
+            output_path = SCRIPT_DIR / "video_list.json"
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        
+        self._log(f"[获取] 已保存到: {output_path}")
+        self._progress(100, "完成!")
+        
+        return result
+
+    def _fetch_user_videos_from_page(self, user_url: str, output_file: str, cookies: dict, headers: dict, sec_user_id: str, user_id: str) -> dict:
+        """
+        从页面 HTML 解析视频列表（回退方法）
+        """
+        import requests
+        from datetime import datetime
+        
+        self._log("[获取] 使用页面解析方式获取视频列表...")
         
         # 获取用户主页 HTML
-        page_url = f"https://www.xiaohongshu.com/user/profile/{sec_user_id}"
+        page_url = f"https://www.xiaohongshu.com/user/profile/{user_id}"
         resp = requests.get(page_url, cookies=cookies, headers=headers, timeout=30)
         
         # 提取 __INITIAL_STATE__ JSON 数据
@@ -849,56 +1037,21 @@ class XHSToYouTube:
         
         json_start = start_idx + len(start_marker)
         json_text = resp.text[json_start:]
+        json_text = json_text.replace(':undefined', ':null').replace(',undefined', ',null')
         
-        # 替换 JavaScript 的 undefined 为 null（JSON 不支持 undefined）
-        json_text = json_text.replace(':undefined', ':null')
-        json_text = json_text.replace(',undefined', ',null')
-        
-        # 解析 JSON
         decoder = json.JSONDecoder()
         try:
             state, _ = decoder.raw_decode(json_text)
         except json.JSONDecodeError as e:
-            self._log(f"[错误] JSON 解析失败: {e}")
             raise ValueError(f"解析页面数据失败: {e}")
         
-        # 从页面数据中提取真实的 user_id
-        user_id = sec_user_id  # 默认使用 URL 中的 ID
-        if 'user' in state and 'userInfo' in state['user']:
-            user_info = state['user']['userInfo']
-            if isinstance(user_info, dict) and 'userId' in user_info:
-                user_id = user_info['userId']
-                self._log(f"[获取] 真实用户 ID: {user_id}")
-        
-        # 如果真实 user_id 与 URL 中的不同，用真实 user_id 重新请求
-        # 因为用 sec_user_id 请求时，笔记数据可能为空
-        if user_id != sec_user_id:
-            self._log(f"[获取] 使用真实用户 ID 重新请求...")
-            page_url = f"https://www.xiaohongshu.com/user/profile/{user_id}"
-            resp = requests.get(page_url, cookies=cookies, headers=headers, timeout=30)
-            
-            # 重新解析 JSON
-            start_idx = resp.text.find(start_marker)
-            if start_idx != -1:
-                json_text = resp.text[start_idx + len(start_marker):]
-                json_text = json_text.replace(':undefined', ':null').replace(',undefined', ',null')
-                try:
-                    state, _ = decoder.raw_decode(json_text)
-                except json.JSONDecodeError:
-                    pass  # 使用之前解析的 state
-        
-        self._progress(50, "解析视频列表...")
-        
-        # 提取笔记列表
         videos = []
         
         # 解析 Vue 响应式对象结构
         def unwrap_vue(obj, depth=0):
-            """解包 Vue 响应式对象"""
             if depth > 5 or not obj:
                 return obj
             if isinstance(obj, dict):
-                # Vue 3 响应式对象
                 if '_rawValue' in obj:
                     return unwrap_vue(obj['_rawValue'], depth + 1)
                 if '_value' in obj:
@@ -910,17 +1063,13 @@ class XHSToYouTube:
         if 'user' in state and 'notes' in state['user']:
             notes_data = unwrap_vue(state['user']['notes'])
         
-        # 解析笔记数组（可能是嵌套数组）
         def extract_notes(obj):
-            """递归提取笔记"""
             notes = []
             if isinstance(obj, list):
                 for item in obj:
                     if isinstance(item, dict) and 'noteCard' in item:
-                        # 直接是笔记对象
                         notes.append(item)
                     elif isinstance(item, list):
-                        # 嵌套数组
                         notes.extend(extract_notes(item))
             return notes
         
@@ -936,7 +1085,6 @@ class XHSToYouTube:
                 xsec_token = card.get('xsecToken', '')
                 
                 if note_id:
-                    # 生成带 xsec_token 的 URL，确保可以访问
                     if xsec_token:
                         url = f'https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}&xsec_source=pc_user'
                     else:
@@ -952,7 +1100,6 @@ class XHSToYouTube:
         
         self._log(f'[获取] 找到 {len(videos)} 个视频')
         
-        # 构建结果
         result = {
             "user_id": user_id,
             "fetch_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -960,7 +1107,6 @@ class XHSToYouTube:
             "videos": videos
         }
         
-        # 保存到文件
         if output_file:
             output_path = Path(output_file)
         else:
