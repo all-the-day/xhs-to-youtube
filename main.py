@@ -3,6 +3,7 @@
 小红书视频搬运到 YouTube 的自动化脚本
 
 使用方法:
+    python main.py -i                    # 交互式模式
     python main.py transfer <小红书视频URL> --title-en "英文标题"
     python main.py fetch <用户主页URL> --output videos.json
     python main.py batch --input video_list.json
@@ -143,6 +144,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
+    # 交互式模式（推荐）
+    python main.py -i
+
     # 搬运单个视频
     python main.py transfer "https://www.xiaohongshu.com/explore/xxx"
 
@@ -180,6 +184,10 @@ def main():
     python main.py status
         """
     )
+    
+    # 交互式模式参数
+    parser.add_argument("-i", "--interactive", action="store_true",
+                       help="启动交互式命令行界面")
     
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
     
@@ -233,6 +241,12 @@ def main():
     status_parser.set_defaults(func=cmd_status)
     
     args = parser.parse_args()
+    
+    # 交互式模式
+    if args.interactive:
+        from interactive import main as interactive_main
+        interactive_main()
+        return
     
     # 如果没有指定子命令，显示帮助
     if not args.command:

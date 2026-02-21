@@ -10,7 +10,7 @@
 - 批量获取用户视频列表（URL 带 xsec_token 确保可访问）
 - 批量上传视频列表（随机间隔、自动跳过已上传）
 
-**版本**: 1.4.0
+**版本**: 1.5.0
 
 ## 技术栈
 
@@ -24,7 +24,8 @@
 xhs-to-youtube/
 ├── __init__.py       # Python 包初始化
 ├── core.py           # 核心逻辑类 XHSToYouTube
-├── main.py           # 命令行入口（子命令：transfer/fetch/batch）
+├── main.py           # 命令行入口（子命令：transfer/fetch/batch/update/status）
+├── interactive.py    # 交互式命令行界面
 ├── test_flow.py      # 测试套件
 ├── setup.sh          # 环境配置脚本
 ├── .gitignore        # Git 忽略配置
@@ -49,13 +50,25 @@ xhs-to-youtube/
 - `authorize_youtube_with_code(code)` - 使用授权码完成授权
 - `upload_to_youtube()` - 上传视频到 YouTube
 - `transfer(xhs_url, title=None, description=None, ...)` - 完整搬运流程
-- `fetch_user_videos(user_url, output_file)` - 获取用户主页视频列表
+- `fetch_user_videos(user_url, output_file, page_size)` - 获取用户主页视频列表（支持分页）
 - `batch_transfer(video_list_path, ...)` - 批量搬运视频列表
+- `check_credentials()` - 检查凭证状态
+- `update_cookie(content)` - 更新小红书 Cookie（支持 JSON 和 Netscape 格式）
 - `_load_uploaded_records()` - 加载已上传记录
 - `_save_uploaded_record(record)` - 保存上传记录
 - `_is_uploaded(note_id)` - 检查视频是否已上传
 
 ### fetch_user_videos 返回结构
+
+```python
+# 方法签名
+def fetch_user_videos(self, user_url: str, output_file: str = None, page_size: int = 10) -> dict
+```
+
+**参数说明：**
+- `user_url`: 用户主页 URL
+- `output_file`: 输出文件路径（默认 `video_list.json`）
+- `page_size`: 每页获取数量（默认 10 条）
 
 ```json
 {
@@ -154,48 +167,78 @@ bash setup.sh
 ### 命令行使用
 
 ```bash
+# 交互式模式（推荐新手使用）
+python3 main.py -i
+
 # 搬运单个视频（默认公开，自动去水印）
-python main.py transfer "https://www.xiaohongshu.com/explore/xxx"
+python3 main.py transfer "https://www.xiaohongshu.com/explore/xxx"
 
 # 搬运视频并添加英文标题（生成双语标题）
-python main.py transfer "小红书URL" --title-en "English Title"
+python3 main.py transfer "小红书URL" --title-en "English Title"
 
 # 自定义标签和隐私设置
-python main.py transfer "小红书URL" --tags "vlog,life" --privacy unlisted
+python3 main.py transfer "小红书URL" --tags "vlog,life" --privacy unlisted
 
 # 保留本地视频
-python main.py transfer "小红书URL" --keep-video
+python3 main.py transfer "小红书URL" --keep-video
 
 # 获取用户主页所有视频链接（默认输出到 video_list.json）
-python main.py fetch "https://www.xiaohongshu.com/user/profile/xxx"
+python3 main.py fetch "https://www.xiaohongshu.com/user/profile/xxx"
+
+# 获取用户视频，每页20条
+python3 main.py fetch "https://www.xiaohongshu.com/user/profile/xxx" --page-size 20
 
 # 获取用户视频并保存到指定文件
-python main.py fetch "https://www.xiaohongshu.com/user/profile/xxx" --output my_videos.json
+python3 main.py fetch "https://www.xiaohongshu.com/user/profile/xxx" --output my_videos.json
 
 # 批量上传视频列表（使用默认 video_list.json）
-python main.py batch
+python3 main.py batch
 
 # 批量上传指定文件，自定义间隔时间
-python main.py batch --input my_videos.json --interval-min 15 --interval-max 45
+python3 main.py batch --input my_videos.json --interval-min 15 --interval-max 45
 
 # 强制重新上传所有视频（不跳过已上传）
-python main.py batch --force
+python3 main.py batch --force
+
+# 更新所有凭证（Cookie + Token）
+python3 main.py update
+
+# 只更新 Cookie
+python3 main.py update --cookie
+
+# 只更新 Token
+python3 main.py update --token
+
+# 查看凭证状态
+python3 main.py status
 ```
 
 ## 配置文件
 
 ### cookies.txt
-小红书 Cookie 文件，Netscape 格式。使用浏览器扩展导出。
+小红书 Cookie 文件，支持 **JSON** 和 **Netscape** 两种格式。
 
 **导出方法：**
 1. 登录小红书网站
 2. 使用 Cookie Editor 等扩展导出 Cookie
-3. 选择 JSON 格式导出
-4. 转换为 Netscape 格式保存
+3. 选择 JSON 格式导出，直接粘贴即可（脚本自动转换）
+4. 或转换为 Netscape 格式保存
+
+**JSON 格式（推荐）：**
+直接粘贴浏览器扩展导出的 JSON 数组即可。
 
 **Netscape 格式示例：**
 ```
 xiaohongshu.com	TRUE	/	FALSE	1802674392	a1	cookie_value
+```
+
+**更新 Cookie：**
+```bash
+# 交互式更新
+python3 main.py update --cookie
+
+# 或使用交互式模式
+python3 main.py -i
 ```
 
 ### credentials.json
@@ -209,9 +252,60 @@ Google Cloud Console 下载的 OAuth 2.0 客户端凭证：
 ### token.json
 OAuth 授权后自动生成，存储访问令牌。
 
+**更新 Token：**
+```bash
+# 交互式更新
+python3 main.py update --token
+
+# 或使用交互式模式
+python3 main.py -i
+```
+
+### 凭证状态检查
+
+```bash
+# 查看所有凭证状态
+python3 main.py status
+```
+
+输出示例：
+```
+[✓] 小红书 Cookie
+    路径: /path/to/cookies.txt
+    状态: 已配置
+
+[✓] YouTube Token
+    路径: /path/to/token.json
+    状态: 有效
+
+[Token 过期时间] 2026-03-21T10:30:00Z
+```
+
 ## OAuth 授权流程
 
 首次运行时，脚本会自动打开浏览器进行授权，授权成功后自动生成 `token.json`。
+
+## 交互式模式
+
+推荐新手使用交互式模式，提供友好的菜单界面：
+
+```bash
+python3 main.py -i
+```
+
+**功能菜单：**
+1. 单个视频搬运
+2. 获取用户视频列表
+3. 批量搬运上传
+4. 更新凭证
+5. 查看凭证状态
+0. 退出
+
+**特点：**
+- 实时显示凭证状态
+- 默认值提示，减少输入
+- 操作确认，防止误操作
+- 清屏刷新，界面整洁
 
 ## 视频元数据
 
@@ -285,7 +379,7 @@ master        # 主分支，稳定版本（测试通过）
 
 3. **回归测试（必须）**
    ```bash
-   python test_flow.py
+   python3 test_flow.py
    ```
 
 4. **合并回主分支**
@@ -303,7 +397,7 @@ master        # 主分支，稳定版本（测试通过）
 ### 合并检查清单
 
 - [ ] 代码已提交
-- [ ] 回归测试通过 (`python test_flow.py`)
+- [ ] 回归测试通过 (`python3 test_flow.py`)
 - [ ] 无遗留的调试代码
 
 ## 依赖版本
@@ -319,7 +413,7 @@ requests
 
 ```bash
 # 运行测试套件
-python test_flow.py
+python3 test_flow.py
 ```
 
 测试内容包括：
