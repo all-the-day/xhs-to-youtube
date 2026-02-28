@@ -39,6 +39,9 @@ VIDEO_LIST_FILE = SCRIPT_DIR / "video_list.json"
 # YouTube API 权限范围
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
+# 每日上传限制
+DAILY_UPLOAD_LIMIT = 10
+
 
 @dataclass
 class CredentialStatus:
@@ -932,23 +935,46 @@ class XHSToYouTube:
                 "user_id": user_id,
                 "cursor": cursor,
                 "num": page_size,
-                "image_scenes": "FD_WM_WEBP,CRD_WM_WEBP"
+                "image_formats": "jpg,webp,avif",
+                "xsec_token": "",
+                "xsec_source": ""
             }
+            
+            # 调试日志：请求参数
+            self._log(f"[调试] 第 {page_num} 页请求参数: user_id={user_id}, cursor={cursor}, num={page_size}")
             
             try:
                 api_resp = requests.get(api_url, params=params, cookies=cookies, headers=api_headers, timeout=30)
                 data = api_resp.json()
+                
+                # 调试日志：响应基本信息
+                self._log(f"[调试] API 响应: code={data.get('code')}, msg={data.get('msg', 'N/A')}")
+                # 调试日志：完整响应（截取前500字符）
+                import json as json_module
+                resp_str = json_module.dumps(data, ensure_ascii=False)
+                self._log(f"[调试] 完整响应: {resp_str[:500]}...")
             except Exception as e:
                 self._log(f"[错误] API 请求失败: {e}")
                 break
             
             if data.get('code') != 0:
                 self._log(f"[错误] API 返回: code={data.get('code')}, msg={data.get('msg', '未知错误')}")
-                # 如果 API 失败，尝试回退到页面解析方式
-                self._log("[获取] 尝试回退到页面解析方式...")
-                return self._fetch_user_videos_from_page(user_url, output_file, cookies, headers, sec_user_id, user_id)
+                # 如果 API 失败，尝试 Playwright 远程调试方式
+                self._log("[获取] 尝试 Playwright 远程调试方式...")
+                try:
+                    return self._fetch_user_videos_playwright(user_url, output_file)
+                except Exception as e:
+                    self._log(f"[警告] Playwright 方式失败: {e}")
+                    self._log("[获取] 尝试回退到页面解析方式...")
+                    return self._fetch_user_videos_from_page(user_url, output_file, cookies, headers, sec_user_id, user_id)
             
             notes = data.get('data', {}).get('notes', [])
+            
+            # 调试日志：分页关键信息
+            has_more = data.get('data', {}).get('has_more', False)
+            next_cursor = data.get('data', {}).get('cursor', '')
+            self._log(f"[调试] 分页信息: has_more={has_more}, next_cursor={next_cursor}, notes数量={len(notes)}")
+            
             if not notes:
                 self._log(f"[获取] 第 {page_num} 页无数据，结束获取")
                 break
@@ -963,9 +989,9 @@ class XHSToYouTube:
                     
                     if note_id:
                         if xsec_token:
-                            url = f'https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}&xsec_source=pc_user'
+                            url = f'https://www.xiaohongshu.com/user/profile/{user_id}/{note_id}?xsec_token={xsec_token}&xsec_source=pc_user'
                         else:
-                            url = f'https://www.xiaohongshu.com/explore/{note_id}'
+                            url = f'https://www.xiaohongshu.com/user/profile/{user_id}/{note_id}'
                         
                         videos.append({
                             'note_id': note_id,
@@ -977,13 +1003,12 @@ class XHSToYouTube:
             
             self._log(f"[获取] 第 {page_num} 页: 获取 {len(notes)} 条笔记，其中 {sum(1 for n in notes if n.get('type') == 'video')} 个视频")
             
-            # 检查是否还有更多
-            has_more = data.get('data', {}).get('has_more', False)
+            # 检查是否还有更多（has_more 和 next_cursor 在前面已获取）
             if not has_more:
                 self._log("[获取] 已获取所有视频")
                 break
             
-            cursor = data.get('data', {}).get('cursor', '')
+            cursor = next_cursor
             page_num += 1
             
             # 防止无限循环
@@ -1024,15 +1049,21 @@ class XHSToYouTube:
         
         self._log("[获取] 使用页面解析方式获取视频列表...")
         
-        # 获取用户主页 HTML
-        page_url = f"https://www.xiaohongshu.com/user/profile/{user_id}"
+        # 获取用户主页 HTML（使用 sec_user_id）
+        page_url = f"https://www.xiaohongshu.com/user/profile/{sec_user_id}"
+        self._log(f"[调试] 请求页面: {page_url}")
         resp = requests.get(page_url, cookies=cookies, headers=headers, timeout=30)
+        self._log(f"[调试] 响应状态: {resp.status_code}, 内容长度: {len(resp.text)}")
         
         # 提取 __INITIAL_STATE__ JSON 数据
         start_marker = 'window.__INITIAL_STATE__='
         start_idx = resp.text.find(start_marker)
         
+        self._log(f"[调试] 查找 __INITIAL_STATE__: {'找到' if start_idx != -1 else '未找到'}")
+        
         if start_idx == -1:
+            # 输出页面内容片段帮助调试
+            self._log(f"[调试] 页面内容前500字符: {resp.text[:500]}")
             raise ValueError("无法从页面提取数据，可能需要登录")
         
         json_start = start_idx + len(start_marker)
@@ -1086,9 +1117,9 @@ class XHSToYouTube:
                 
                 if note_id:
                     if xsec_token:
-                        url = f'https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}&xsec_source=pc_user'
+                        url = f'https://www.xiaohongshu.com/user/profile/{user_id}/{note_id}?xsec_token={xsec_token}&xsec_source=pc_user'
                     else:
-                        url = f'https://www.xiaohongshu.com/explore/{note_id}'
+                        url = f'https://www.xiaohongshu.com/user/profile/{user_id}/{note_id}'
                     
                     videos.append({
                         'note_id': note_id,
@@ -1119,6 +1150,170 @@ class XHSToYouTube:
         self._progress(100, "完成!")
         
         return result
+    
+    def _fetch_user_videos_playwright(self, user_url: str, output_file: str, 
+                                       cdp_endpoint: str = "http://localhost:9222") -> dict:
+        """
+        使用 Playwright 远程调试获取用户视频列表
+        
+        需要先在 Windows 端启动 Chrome 远程调试：
+        chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\\temp\\chrome-debug"
+        
+        Args:
+            user_url: 用户主页 URL
+            output_file: 输出文件路径
+            cdp_endpoint: Chrome DevTools Protocol 端点
+            
+        Returns:
+            包含用户视频列表的字典
+        """
+        try:
+            import asyncio
+            from playwright.async_api import async_playwright
+        except ImportError:
+            raise ImportError("请先安装 Playwright: pip install playwright && playwright install chromium")
+        
+        async def fetch():
+            async with async_playwright() as p:
+                self._log(f"[Playwright] 连接到远程浏览器: {cdp_endpoint}")
+                try:
+                    browser = await p.chromium.connect_over_cdp(cdp_endpoint)
+                except Exception as e:
+                    self._log(f"[错误] 无法连接到远程浏览器: {e}")
+                    self._log("[提示] 请确保 Chrome 已启动远程调试模式:")
+                    self._log('  chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\\temp\\chrome-debug"')
+                    raise ValueError("无法连接到远程浏览器，请检查 Chrome 远程调试是否已启动")
+                
+                # 获取或创建页面
+                contexts = browser.contexts
+                if contexts:
+                    context = contexts[0]
+                    pages = context.pages
+                    if pages:
+                        page = pages[0]
+                    else:
+                        page = await context.new_page()
+                else:
+                    context = await browser.new_context()
+                    page = await context.new_page()
+                
+                self._log(f"[Playwright] 导航到用户主页: {user_url}")
+                await page.goto(user_url, wait_until='networkidle', timeout=60000)
+                
+                # 等待页面加载
+                await page.wait_for_timeout(3000)
+                
+                # 滚动加载更多视频
+                self._log("[Playwright] 滚动页面加载更多视频...")
+                last_count = 0
+                scroll_attempts = 0
+                max_scroll_attempts = 20  # 最多滚动 20 次
+                
+                while scroll_attempts < max_scroll_attempts:
+                    # 滚动到页面底部
+                    await page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
+                    await page.wait_for_timeout(1500)
+                    
+                    # 检查视频数量
+                    current_count = await page.evaluate('''
+                        document.querySelectorAll('section a[href*="/explore/"]').length
+                    ''')
+                    
+                    self._log(f"[Playwright] 当前视频链接数: {current_count}")
+                    
+                    if current_count == last_count:
+                        # 连续两次数量相同，可能已到底部
+                        scroll_attempts += 1
+                        if scroll_attempts >= 3:  # 连续 3 次相同则停止
+                            self._log("[Playwright] 已加载所有视频")
+                            break
+                    else:
+                        scroll_attempts = 0
+                        last_count = current_count
+                
+                # 获取 __INITIAL_STATE__ 数据
+                self._log("[Playwright] 提取页面数据...")
+                state = await page.evaluate('window.__INITIAL_STATE__')
+                
+                if not state:
+                    raise ValueError("无法获取页面数据")
+                
+                # 解析用户信息
+                user_info = state.get('user', {}).get('userInfo', {})
+                user_id = user_info.get('userId', '')
+                
+                # 解析笔记数据
+                videos = []
+                notes_data = state.get('user', {}).get('notes', {})
+                
+                def unwrap_vue(obj, depth=0):
+                    if depth > 5 or not obj:
+                        return obj
+                    if isinstance(obj, dict):
+                        if '_rawValue' in obj:
+                            return unwrap_vue(obj['_rawValue'], depth + 1)
+                        if '_value' in obj:
+                            return unwrap_vue(obj['_value'], depth + 1)
+                    return obj
+                
+                def extract_notes(obj):
+                    notes = []
+                    if isinstance(obj, list):
+                        for item in obj:
+                            if isinstance(item, dict) and 'noteCard' in item:
+                                notes.append(item)
+                            elif isinstance(item, list):
+                                notes.extend(extract_notes(item))
+                    return notes
+                
+                notes_data = unwrap_vue(notes_data)
+                notes = extract_notes(notes_data) if notes_data else []
+                
+                for note in notes:
+                    card = note.get('noteCard', {})
+                    if card.get('type') == 'video':
+                        note_id = card.get('noteId', '')
+                        title = card.get('displayTitle', '') or card.get('title', '')
+                        xsec_token = card.get('xsecToken', '')
+                        
+                        if note_id:
+                            if xsec_token:
+                                url = f'https://www.xiaohongshu.com/user/profile/{user_id}/{note_id}?xsec_token={xsec_token}&xsec_source=pc_user'
+                            else:
+                                url = f'https://www.xiaohongshu.com/user/profile/{user_id}/{note_id}'
+                            
+                            videos.append({
+                                'note_id': note_id,
+                                'title': title,
+                                'url': url,
+                                'xsec_token': xsec_token,
+                                'desc': card.get('desc', '')
+                            })
+                
+                # 不关闭浏览器，保持连接
+                self._log(f"[Playwright] 找到 {len(videos)} 个视频")
+                
+                return {
+                    "user_id": user_id,
+                    "fetch_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "total_count": len(videos),
+                    "videos": videos
+                }
+        
+        result = asyncio.run(fetch())
+        
+        # 保存结果
+        if output_file:
+            output_path = Path(output_file)
+        else:
+            output_path = SCRIPT_DIR / "video_list.json"
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        
+        self._log(f"[获取] 已保存到: {output_path}")
+        
+        return result
 
     def _load_uploaded_records(self) -> Dict[str, Dict]:
         """
@@ -1135,6 +1330,36 @@ class XHSToYouTube:
             except (json.JSONDecodeError, KeyError):
                 return {}
         return {}
+
+    def get_today_upload_count(self) -> int:
+        """
+        获取今日已上传数量
+        
+        Returns:
+            今日已上传的视频数量
+        """
+        records = self._load_uploaded_records()
+        today = datetime.now().strftime("%Y-%m-%d")
+        count = 0
+        for record in records.values():
+            uploaded_at = record.get('uploaded_at', '')
+            if uploaded_at.startswith(today):
+                count += 1
+        return count
+
+    def check_upload_limit(self) -> Dict[str, int]:
+        """
+        检查上传限制
+        
+        Returns:
+            包含 limit, used, remaining 的字典
+        """
+        used = self.get_today_upload_count()
+        return {
+            'limit': DAILY_UPLOAD_LIMIT,
+            'used': used,
+            'remaining': max(0, DAILY_UPLOAD_LIMIT - used)
+        }
 
     def _save_uploaded_record(self, record: UploadRecord) -> None:
         """
@@ -1217,7 +1442,23 @@ class XHSToYouTube:
         
         self._log(f"[批量] 共 {len(videos)} 个视频待处理")
         
-        # 3. 加载已上传记录
+        # 3. 检查上传配额
+        quota = self.check_upload_limit()
+        self._log(f"[配额] 今日已上传 {quota['used']}/{quota['limit']} 个视频，剩余 {quota['remaining']} 个配额")
+        
+        if quota['remaining'] <= 0:
+            self._log("[错误] 今日上传配额已用完，请明天再试")
+            return {
+                'success': False, 
+                'error': 'upload_limit_exceeded',
+                'message': f"今日上传配额已用完 ({quota['limit']}个/天)",
+                'total': len(videos),
+                'skipped': 0,
+                'success_count': 0,
+                'failed': 0
+            }
+        
+        # 4. 加载已上传记录
         uploaded_records = self._load_uploaded_records() if skip_uploaded else {}
         if uploaded_records:
             self._log(f"[批量] 已有 {len(uploaded_records)} 个上传记录")
@@ -1297,13 +1538,22 @@ class XHSToYouTube:
                 self._log(f"[成功] 上传完成: {result['video_url']}")
                 
             except Exception as e:
+                error_msg = str(e)
                 self._log(f"[失败] {video_title or '未知标题'}: {e}")
                 results['failed'] += 1
                 results['failed_videos'].append({
                     'note_id': note_id,
                     'title': video_title or '未知标题',
-                    'error': str(e)
+                    'error': error_msg
                 })
+                
+                # 检测上传限制错误，停止后续上传
+                if 'uploadLimitExceeded' in error_msg:
+                    self._log("")
+                    self._log("[警告] YouTube 上传限制已达到，停止批量上传")
+                    self._log(f"[提示] 今日上传配额已用完 ({DAILY_UPLOAD_LIMIT}个/天)，请明天再试")
+                    results['limit_exceeded'] = True
+                    break
         
         # 6. 输出统计
         self._log("")
