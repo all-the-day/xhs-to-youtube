@@ -26,6 +26,9 @@ def cmd_transfer(args):
     if args.tags:
         tags = [t.strip() for t in args.tags.split(",")]
     
+    # 判断是否启用翻译
+    translate = args.translate or args.translate_title or args.translate_desc
+    
     # 执行搬运
     tool = XHSToYouTube()
     tool.transfer(
@@ -34,7 +37,10 @@ def cmd_transfer(args):
         custom_desc=args.desc,
         tags=tags,
         privacy=args.privacy,
-        keep_video=args.keep_video
+        keep_video=args.keep_video,
+        translate=translate,
+        translate_title=args.translate or args.translate_title,
+        translate_desc=args.translate or args.translate_desc
     )
 
 
@@ -50,6 +56,9 @@ def cmd_fetch(args):
 
 def cmd_batch(args):
     """执行批量搬运"""
+    # 判断是否启用翻译
+    translate = args.translate or args.translate_title or args.translate_desc
+    
     tool = XHSToYouTube()
     tool.batch_transfer(
         video_list_path=args.input,
@@ -57,7 +66,10 @@ def cmd_batch(args):
         interval_max=args.interval_max,
         privacy=args.privacy,
         keep_video=args.keep_video,
-        skip_uploaded=not args.force
+        skip_uploaded=not args.force,
+        translate=translate,
+        translate_title=args.translate or args.translate_title,
+        translate_desc=args.translate or args.translate_desc
     )
 
 
@@ -194,7 +206,7 @@ def main():
     # transfer 子命令
     transfer_parser = subparsers.add_parser("transfer", help="搬运视频到 YouTube")
     transfer_parser.add_argument("url", help="小红书视频 URL")
-    transfer_parser.add_argument("--title-en", help="英文标题（生成双语标题）")
+    transfer_parser.add_argument("--title-en", help="英文标题（手动指定）")
     transfer_parser.add_argument("--desc", help="自定义视频描述")
     transfer_parser.add_argument("--tags", help="视频标签，用逗号分隔")
     transfer_parser.add_argument("--privacy", default="public", 
@@ -202,6 +214,12 @@ def main():
                        help="隐私设置 (默认: public)")
     transfer_parser.add_argument("--keep-video", action="store_true",
                        help="上传后保留本地视频文件")
+    transfer_parser.add_argument("--translate", action="store_true",
+                       help="启用自动翻译（标题+描述）")
+    transfer_parser.add_argument("--translate-title", action="store_true",
+                       help="仅翻译标题")
+    transfer_parser.add_argument("--translate-desc", action="store_true",
+                       help="仅翻译描述")
     transfer_parser.set_defaults(func=cmd_transfer)
     
     # fetch 子命令
@@ -226,6 +244,12 @@ def main():
                        help="上传后保留本地视频文件")
     batch_parser.add_argument("--force", action="store_true",
                        help="强制重新上传（不跳过已上传视频）")
+    batch_parser.add_argument("--translate", action="store_true",
+                       help="启用自动翻译（标题+描述）")
+    batch_parser.add_argument("--translate-title", action="store_true",
+                       help="仅翻译标题")
+    batch_parser.add_argument("--translate-desc", action="store_true",
+                       help="仅翻译描述")
     batch_parser.set_defaults(func=cmd_batch)
     
     # update 子命令

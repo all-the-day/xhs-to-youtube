@@ -12,6 +12,7 @@ env/
 cookies.txt
 credentials.json
 token.json
+config.json
 
 # 视频缓存
 videos/*.mp4
@@ -39,3 +40,6 @@ test_fetch_result.json
 
 # 开发上下文
 .dev_context/
+小陳爱吃榴莲 - 小红书_20260226-093745.xlsx
+小陳爱吃榴莲 - 小红书_20260226-093745.xlsxZone.Identifier
+header.txt

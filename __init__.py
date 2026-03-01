@@ -11,6 +11,7 @@ from .core import (
     CREDENTIALS_FILE,
     TOKEN_FILE,
     VIDEOS_DIR,
+    CONFIG_FILE,
     SCOPES
 )
 

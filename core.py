@@ -35,6 +35,7 @@ TOKEN_FILE = SCRIPT_DIR / "token.json"
 VIDEOS_DIR = SCRIPT_DIR / "videos"
 UPLOADED_FILE = SCRIPT_DIR / "uploaded.json"
 VIDEO_LIST_FILE = SCRIPT_DIR / "video_list.json"
+CONFIG_FILE = SCRIPT_DIR / "config.json"
 
 # YouTube API 权限范围
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
@@ -85,6 +86,7 @@ class XHSToYouTube:
         self.log_callback = log_callback
         self.progress_callback = progress_callback
         self._flow = None  # 存储 OAuth flow 对象，用于 Web UI 授权
+        self._config = None  # 缓存配置
     
     def _log(self, message: str):
         """输出日志"""
@@ -96,6 +98,258 @@ class XHSToYouTube:
         """更新进度"""
         if self.progress_callback:
             self.progress_callback(value, status)
+    
+    def _load_config(self) -> Dict[str, Any]:
+        """加载配置文件"""
+        if self._config is not None:
+            return self._config
+        
+        if CONFIG_FILE.exists():
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                self._config = json.load(f)
+        else:
+            self._config = {}
+        return self._config
+    
+    def _translate_with_youdao(self, text: str) -> str:
+        """
+        使用有道翻译 API（免费，无需注册）
+        
+        Args:
+            text: 要翻译的中文文本
+        
+        Returns:
+            翻译后的英文文本
+        """
+        import requests
+        
+        config = self._load_config()
+        proxies = config.get('proxies')  # 支持代理配置
+        
+        try:
+            # 使用有道翻译网页版 API（免费，无需注册）
+            url = "https://fanyi.youdao.com/translate"
+            params = {
+                "doctype": "json",
+                "type": "ZH_CN2EN",
+                "i": text
+            }
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": "https://fanyi.youdao.com/"
+            }
+            
+            response = requests.get(url, params=params, headers=headers, proxies=proxies, timeout=15)
+            
+            # 检查响应
+            if response.status_code != 200:
+                self._log(f"[警告] 有道翻译请求失败: HTTP {response.status_code}")
+                return text
+                
+            result = response.json()
+            
+            # 解析翻译结果
+            if result.get("translateResult"):
+                translations = result["translateResult"][0]
+                if translations:
+                    translated = " ".join([t.get("tgt", "") for t in translations if t.get("tgt")])
+                    if translated:
+                        self._log(f"[翻译] {text[:20]}... -> {translated[:20]}...")
+                        return translated
+            
+            self._log("[警告] 有道翻译返回空结果，使用原文")
+            return text
+            
+        except Exception as e:
+            self._log(f"[错误] 有道翻译失败: {e}")
+            return text
+    
+    def _translate_with_deeplx(self, text: str) -> str:
+        """
+        使用 DeepLX API 翻译文本（免费，需本地部署）
+        
+        Args:
+            text: 要翻译的中文文本
+        
+        Returns:
+            翻译后的英文文本
+        """
+        import requests
+        
+        config = self._load_config()
+        deeplx_url = config.get('deeplx_url', 'http://localhost:1188')
+        proxies = config.get('proxies')
+        
+        # 构建完整的 API 地址
+        url = f"{deeplx_url.rstrip('/')}/v1/translate"
+        
+        try:
+            response = requests.post(
+                url,
+                json={
+                    "text": text,
+                    "source_lang": "ZH",
+                    "target_lang": "EN"
+                },
+                headers={"Content-Type": "application/json"},
+                proxies=proxies,
+                timeout=30
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            if result.get("code") == 200 and result.get("data"):
+                translated = result["data"]
+                self._log(f"[翻译] {text[:20]}... -> {translated[:20]}...")
+                return translated
+            
+            self._log("[警告] DeepLX 返回空结果")
+            return text
+            
+        except Exception as e:
+            self._log(f"[错误] DeepLX 翻译失败: {e}")
+            return text
+    
+    def _translate_with_deepl(self, text: str) -> str:
+        """
+        使用 DeepL API 翻译文本
+        
+        Args:
+            text: 要翻译的中文文本
+        
+        Returns:
+            翻译后的英文文本
+        """
+        config = self._load_config()
+        api_key = config.get('deepl_api_key')
+        
+        if not api_key:
+            self._log("[警告] 未配置 DeepL API Key，跳过翻译")
+            return text
+        
+        import requests
+        
+        # DeepL API endpoint (免费版和付费版不同)
+        use_free = config.get('deepl_free', True)
+        if use_free:
+            url = "https://api-free.deepl.com/v2/translate"
+        else:
+            url = "https://api.deepl.com/v2/translate"
+        
+        try:
+            response = requests.post(
+                url,
+                data={
+                    "auth_key": api_key,
+                    "text": text,
+                    "source_lang": "ZH",
+                    "target_lang": "EN"
+                },
+                timeout=30
+            )
+            response.raise_for_status()
+            result = response.json()
+            return result["translations"][0]["text"]
+        except Exception as e:
+            self._log(f"[错误] DeepL 翻译失败: {e}")
+            return text
+    
+    def _translate_with_openai(self, text: str, target_type: str = "title") -> str:
+        """
+        使用 OpenAI API 翻译文本
+        
+        Args:
+            text: 要翻译的中文文本
+            target_type: 翻译类型 ("title" 或 "description")
+        
+        Returns:
+            翻译后的英文文本
+        """
+        config = self._load_config()
+        api_key = config.get('openai_api_key')
+        
+        if not api_key:
+            self._log("[警告] 未配置 OpenAI API Key，跳过翻译")
+            return text
+        
+        try:
+            from openai import OpenAI
+        except ImportError:
+            self._log("[错误] 请安装 openai 库: pip install openai")
+            return text
+        
+        base_url = config.get('openai_base_url', 'https://api.openai.com/v1')
+        model = config.get('openai_model', 'gpt-4o-mini')
+        
+        # 根据类型选择 prompt
+        if target_type == "title":
+            system_prompt = """You are a YouTube title translator. Translate Chinese video titles to English.
+Rules:
+- Style: casual, catchy, YouTube-friendly
+- Keep it concise (under 60 characters if possible)
+- Make it engaging for English-speaking audience
+- Only output the English translation, no explanations"""
+        else:
+            system_prompt = """You are a YouTube description translator. Translate Chinese video descriptions to English.
+Rules:
+- Style: casual, conversational, engaging
+- Make it natural for English-speaking audience
+- Keep the original meaning and emotion
+- Only output the English translation, no explanations"""
+        
+        try:
+            client = OpenAI(api_key=api_key, base_url=base_url)
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": text}
+                ],
+                max_tokens=500 if target_type == "description" else 100
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            self._log(f"[错误] 翻译失败: {e}")
+            return text
+    
+    def translate(self, text: str, target_type: str = "title") -> str:
+        """
+        翻译文本（自动选择翻译服务）
+        
+        优先级：DeepLX > 有道翻译 > DeepL > OpenAI
+        
+        Args:
+            text: 要翻译的中文文本
+            target_type: 翻译类型 ("title" 或 "description")
+        
+        Returns:
+            翻译后的英文文本
+        """
+        config = self._load_config()
+        
+        # 优先使用 DeepLX（免费，需本地部署）
+        if config.get('deeplx_url') or not config.get('disable_deeplx'):
+            # 尝试 DeepLX，失败则继续尝试其他服务
+            result = self._translate_with_deeplx(text)
+            if result != text:  # 翻译成功
+                return result
+        
+        # 有道翻译（免费，无需注册）
+        if not config.get('disable_youdao'):
+            result = self._translate_with_youdao(text)
+            if result != text:
+                return result
+        
+        # DeepL（需要 API Key）
+        if config.get('deepl_api_key'):
+            return self._translate_with_deepl(text)
+        
+        # OpenAI（需要 API Key）
+        if config.get('openai_api_key'):
+            return self._translate_with_openai(text, target_type)
+        
+        # 所有服务都失败，返回原文
+        return text
     
     def _load_cookies(self) -> Dict[str, str]:
         """
@@ -762,26 +1016,59 @@ class XHSToYouTube:
             'response': response
         }
 
-    def generate_bilingual_title(self, chinese_title: str, english_title: str = None) -> str:
-        """生成双语标题"""
+    def generate_english_title(
+        self,
+        chinese_title: str,
+        english_title: str = None,
+        translate: bool = False
+    ) -> str:
+        """
+        生成英文标题
+        
+        Args:
+            chinese_title: 中文标题
+            english_title: 手动指定的英文标题（可选）
+            translate: 是否自动翻译
+        
+        Returns:
+            英文标题（或原中文标题，如果无法翻译）
+        """
         if english_title:
-            return f"【{chinese_title}】{english_title}"
+            return english_title
+        
+        if translate:
+            translated = self.translate(chinese_title, "title")
+            return translated
+        
         return chinese_title
 
     def generate_description(
         self,
         original_desc: str,
         source_url: str = "",
-        uploader: str = ""
+        uploader: str = "",
+        translate: bool = False
     ) -> str:
-        """生成视频描述"""
+        """
+        生成视频描述
+        
+        Args:
+            original_desc: 原始描述
+            source_url: 来源 URL
+            uploader: 上传者
+            translate: 是否翻译为英文
+        """
         lines = []
         
         if original_desc:
-            lines.append(original_desc)
+            if translate:
+                translated_desc = self.translate(original_desc, "description")
+                lines.append(translated_desc)
+            else:
+                lines.append(original_desc)
             lines.append("")
         
-        lines.append("原创")
+        lines.append("原创" if not translate else "Original Content")
         
         return "\n".join(lines)
 
@@ -794,7 +1081,10 @@ class XHSToYouTube:
         custom_desc: str = None,
         tags: list = None,
         privacy: str = "public",
-        keep_video: bool = False
+        keep_video: bool = False,
+        translate: bool = False,
+        translate_title: bool = True,
+        translate_desc: bool = True
     ) -> dict:
         """
         完整的搬运流程
@@ -803,29 +1093,45 @@ class XHSToYouTube:
             xhs_url: 小红书视频 URL
             title: 可选的视频标题（如果提供则跳过从页面提取）
             description: 可选的视频描述（如果提供则跳过从页面提取）
-            english_title: 英文标题（生成双语标题）
+            english_title: 英文标题（手动指定）
             custom_desc: 自定义视频描述
             tags: 视频标签列表
             privacy: 隐私设置
             keep_video: 是否保留本地视频文件
+            translate: 是否启用翻译模式
+            translate_title: 是否翻译标题（translate=True 时生效）
+            translate_desc: 是否翻译描述（translate=True 时生效）
         """
         self._log("=" * 60)
         self._log("小红书 → YouTube 视频搬运工具")
+        if translate:
+            self._log("[模式] 英文翻译模式")
         self._log("=" * 60)
         
         # 1. 下载视频
         video_info = self.download_video(xhs_url, title, description)
         
         # 2. 生成标题和描述
-        title = self.generate_bilingual_title(video_info['title'], english_title)
+        if translate and translate_title and not english_title:
+            self._log("[翻译] 正在翻译标题...")
+            title = self.generate_english_title(
+                video_info['title'],
+                english_title,
+                translate=True
+            )
+        else:
+            title = self.generate_english_title(video_info['title'], english_title)
         
         if custom_desc:
             description = custom_desc
         else:
+            if translate and translate_desc:
+                self._log("[翻译] 正在翻译描述...")
             description = self.generate_description(
                 video_info['description'],
                 xhs_url,
-                video_info['uploader']
+                video_info['uploader'],
+                translate=translate and translate_desc
             )
         
         # 3. 上传到 YouTube
@@ -1399,7 +1705,10 @@ class XHSToYouTube:
         interval_max: int = 30,
         privacy: str = "public",
         keep_video: bool = False,
-        skip_uploaded: bool = True
+        skip_uploaded: bool = True,
+        translate: bool = False,
+        translate_title: bool = True,
+        translate_desc: bool = True
     ) -> Dict[str, Any]:
         """
         批量搬运视频
@@ -1411,6 +1720,9 @@ class XHSToYouTube:
             privacy: 隐私设置
             keep_video: 是否保留本地视频
             skip_uploaded: 是否跳过已上传视频
+            translate: 是否启用翻译模式
+            translate_title: 是否翻译标题（translate=True 时生效）
+            translate_desc: 是否翻译描述（translate=True 时生效）
             
         Returns:
             批量处理结果统计
@@ -1515,7 +1827,10 @@ class XHSToYouTube:
                     title=video_title,
                     description=video_desc,
                     privacy=privacy,
-                    keep_video=keep_video
+                    keep_video=keep_video,
+                    translate=translate,
+                    translate_title=translate_title,
+                    translate_desc=translate_desc
                 )
                 
                 # 记录上传结果

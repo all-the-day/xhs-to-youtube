@@ -91,8 +91,14 @@ def menu_single_transfer(tool: XHSToYouTube):
         input("\n按回车键继续...")
         return
     
+    # 是否启用翻译
+    translate = confirm("是否启用自动翻译（标题+描述翻译为英文）?")
+    
     # 英文标题（可选）
-    title_en = input("英文标题（可选，留空跳过）: ").strip() or None
+    if not translate:
+        title_en = input("英文标题（可选，留空跳过）: ").strip() or None
+    else:
+        title_en = None
     
     # 自定义描述（可选）
     custom_desc = input("自定义描述（可选，留空跳过）: ").strip() or None
@@ -114,7 +120,9 @@ def menu_single_transfer(tool: XHSToYouTube):
     print("\n" + "-" * 30)
     print("即将执行搬运:")
     print(f"  URL: {url}")
-    if title_en:
+    if translate:
+        print(f"  翻译模式: 启用（标题+描述）")
+    elif title_en:
         print(f"  英文标题: {title_en}")
     print(f"  隐私设置: {privacy}")
     print(f"  保留本地: {'是' if keep_video else '否'}")
@@ -134,7 +142,10 @@ def menu_single_transfer(tool: XHSToYouTube):
             custom_desc=custom_desc,
             tags=tags,
             privacy=privacy,
-            keep_video=keep_video
+            keep_video=keep_video,
+            translate=translate,
+            translate_title=True,
+            translate_desc=True
         )
     except Exception as e:
         print(f"\n[错误] {e}")
@@ -218,6 +229,9 @@ def menu_batch_transfer(tool: XHSToYouTube):
         input("\n按回车键继续...")
         return
     
+    # 是否启用翻译
+    translate = confirm("是否启用自动翻译（标题+描述翻译为英文）?")
+    
     # 上传间隔
     print("\n上传间隔设置:")
     interval_min = input_with_default("最小间隔（秒）", "10")
@@ -244,6 +258,8 @@ def menu_batch_transfer(tool: XHSToYouTube):
     print("\n" + "-" * 30)
     print("即将执行批量搬运:")
     print(f"  视频数量: {total}")
+    if translate:
+        print(f"  翻译模式: 启用（标题+描述）")
     print(f"  上传间隔: {interval_min}-{interval_max} 秒")
     print(f"  隐私设置: {privacy}")
     print(f"  保留本地: {'是' if keep_video else '否'}")
@@ -264,7 +280,10 @@ def menu_batch_transfer(tool: XHSToYouTube):
             interval_max=interval_max,
             privacy=privacy,
             keep_video=keep_video,
-            skip_uploaded=skip_uploaded
+            skip_uploaded=skip_uploaded,
+            translate=translate,
+            translate_title=True,
+            translate_desc=True
         )
     except Exception as e:
         print(f"\n[错误] {e}")

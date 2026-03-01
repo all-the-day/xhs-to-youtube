@@ -29,10 +29,10 @@ fi
 echo ""
 echo "[2/4] 安装 Python 依赖..."
 if command -v pip3 &> /dev/null; then
-    pip3 install google-api-python-client google-auth-oauthlib google-auth-httplib2 requests --quiet
+    pip3 install google-api-python-client google-auth-oauthlib google-auth-httplib2 requests openai --quiet
     echo "    ✓ 依赖安装完成"
 elif python3 -m pip --version &> /dev/null; then
-    python3 -m pip install google-api-python-client google-auth-oauthlib google-auth-httplib2 requests --quiet
+    python3 -m pip install google-api-python-client google-auth-oauthlib google-auth-httplib2 requests openai --quiet
     echo "    ✓ 依赖安装完成"
 else
     echo "    ⚠ 未找到 pip，请手动安装:"
@@ -45,7 +45,7 @@ else
     echo "    python3 get-pip.py"
     echo ""
     echo "    然后运行以下命令安装依赖:"
-    echo "    pip3 install google-api-python-client google-auth-oauthlib google-auth-httplib2 requests"
+    echo "    pip3 install google-api-python-client google-auth-oauthlib google-auth-httplib2 requests openai"
     echo ""
     exit 1
 fi
@@ -136,6 +136,13 @@ else
     echo "[ ] credentials.json - 需要从 Google Cloud Console 下载"
 fi
 
+# 检查 config.json (OpenAI 配置)
+if [ -f "config.json" ]; then
+    echo "[✓] config.json - 已配置"
+else
+    echo "[ ] config.json - 需要配置 OpenAI API Key（用于翻译功能）"
+fi
+
 echo ""
 echo "=================================================="
 echo "导出小红书 Cookie 的方法:"
@@ -163,5 +170,27 @@ echo "=================================================="
 echo "完成以上配置后，使用以下命令搬运视频:"
 echo "=================================================="
 echo ""
-echo "  python main.py \"小红书视频URL\" --title-en \"英文标题\""
+echo "  # 基本用法"
+echo "  python main.py transfer \"小红书视频URL\""
+echo ""
+echo "  # 启用自动翻译（标题+描述）"
+echo "  python main.py transfer \"小红书视频URL\" --translate"
+echo ""
+echo "  # 批量搬运 + 自动翻译"
+echo "  python main.py batch --translate"
+echo ""
+
+echo "=================================================="
+echo "配置 OpenAI API Key（用于翻译功能）:"
+echo "=================================================="
+echo ""
+echo "  1. 复制 config.example.json 为 config.json"
+echo "  2. 编辑 config.json，填入你的 OpenAI API Key"
+echo ""
+echo "  示例 config.json:"
+echo "  {"
+echo "    \"openai_api_key\": \"sk-your-api-key-here\","
+echo "    \"openai_base_url\": \"https://api.openai.com/v1\","
+echo "    \"openai_model\": \"gpt-4o-mini\""
+echo "  }"
 echo ""

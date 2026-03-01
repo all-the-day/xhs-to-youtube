@@ -1,0 +1,9 @@
+{
+  "deeplx_url": "http://localhost:1188",
+  "proxies": {},
+  "deepl_api_key": "",
+  "deepl_free": true,
+  "openai_api_key": "",
+  "openai_base_url": "https://api.openai.com/v1",
+  "openai_model": "gpt-4o-mini"
+}
