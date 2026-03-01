@@ -8,7 +8,8 @@ import os
 import json
 from pathlib import Path
 
-from core import XHSToYouTube, COOKIES_FILE, TOKEN_FILE, CREDENTIALS_FILE
+from src.core import XHSToYouTube
+from src.config import TOKEN_FILE
 
 
 def clear_screen():
@@ -54,16 +55,7 @@ def confirm(message: str) -> bool:
 
 
 def select_option(options: list, prompt: str = "请选择") -> int:
-    """
-    选择选项
-    
-    Args:
-        options: 选项列表
-        prompt: 提示信息
-    
-    Returns:
-        选择的索引（从 0 开始）
-    """
+    """选择选项"""
     for i, opt in enumerate(options, 1):
         print(f"  {i}. {opt}")
     
@@ -84,39 +76,31 @@ def menu_single_transfer(tool: XHSToYouTube):
     print("单个视频搬运")
     print("-" * 50)
     
-    # 输入视频 URL
     url = input("请输入小红书视频 URL: ").strip()
     if not url:
         print("[取消] 未输入 URL")
         input("\n按回车键继续...")
         return
     
-    # 是否启用翻译
     translate = confirm("是否启用自动翻译（标题+描述翻译为英文）?")
     
-    # 英文标题（可选）
     if not translate:
         title_en = input("英文标题（可选，留空跳过）: ").strip() or None
     else:
         title_en = None
     
-    # 自定义描述（可选）
     custom_desc = input("自定义描述（可选，留空跳过）: ").strip() or None
     
-    # 标签（可选）
     tags_input = input("标签（可选，逗号分隔，留空跳过）: ").strip()
     tags = [t.strip() for t in tags_input.split(",")] if tags_input else None
     
-    # 隐私设置
     print("\n隐私设置:")
     privacy_options = ["公开", "不公开", "私享"]
     privacy_idx = select_option(privacy_options, "请选择隐私设置")
     privacy = ["public", "unlisted", "private"][privacy_idx]
     
-    # 是否保留视频
     keep_video = confirm("上传后是否保留本地视频文件?")
     
-    # 确认执行
     print("\n" + "-" * 30)
     print("即将执行搬运:")
     print(f"  URL: {url}")
@@ -133,7 +117,6 @@ def menu_single_transfer(tool: XHSToYouTube):
         input("\n按回车键继续...")
         return
     
-    # 执行搬运
     print()
     try:
         tool.transfer(
@@ -159,24 +142,20 @@ def menu_fetch_videos(tool: XHSToYouTube):
     print("获取用户视频列表")
     print("-" * 50)
     
-    # 输入用户 URL
     url = input("请输入小红书用户主页 URL: ").strip()
     if not url:
         print("[取消] 未输入 URL")
         input("\n按回车键继续...")
         return
     
-    # 每页数量
     page_size = input_with_default("每页获取数量", "10")
     try:
         page_size = int(page_size)
     except ValueError:
         page_size = 10
     
-    # 输出文件
-    output_file = input_with_default("输出文件路径", "video_list.json")
+    output_file = input_with_default("输出文件路径", "data/video_list.json")
     
-    # 执行获取
     print("\n" + "-" * 30)
     print("开始获取视频列表...")
     print("-" * 30)
@@ -201,17 +180,14 @@ def menu_batch_transfer(tool: XHSToYouTube):
     print("批量搬运上传")
     print("-" * 50)
     
-    # 选择视频列表文件
-    default_file = "video_list.json"
+    default_file = "data/video_list.json"
     input_file = input_with_default("视频列表文件路径", default_file)
     
-    # 检查文件是否存在
     if not Path(input_file).exists():
         print(f"[错误] 文件不存在: {input_file}")
         input("\n按回车键继续...")
         return
     
-    # 显示文件内容预览
     try:
         with open(input_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -229,10 +205,8 @@ def menu_batch_transfer(tool: XHSToYouTube):
         input("\n按回车键继续...")
         return
     
-    # 是否启用翻译
     translate = confirm("是否启用自动翻译（标题+描述翻译为英文）?")
     
-    # 上传间隔
     print("\n上传间隔设置:")
     interval_min = input_with_default("最小间隔（秒）", "10")
     interval_max = input_with_default("最大间隔（秒）", "30")
@@ -242,19 +216,14 @@ def menu_batch_transfer(tool: XHSToYouTube):
     except ValueError:
         interval_min, interval_max = 10, 30
     
-    # 隐私设置
     print("\n隐私设置:")
     privacy_options = ["公开", "不公开", "私享"]
     privacy_idx = select_option(privacy_options, "请选择隐私设置")
     privacy = ["public", "unlisted", "private"][privacy_idx]
     
-    # 是否保留视频
     keep_video = confirm("上传后是否保留本地视频文件?")
-    
-    # 是否跳过已上传
     skip_uploaded = confirm("是否跳过已上传的视频?")
     
-    # 确认执行
     print("\n" + "-" * 30)
     print("即将执行批量搬运:")
     print(f"  视频数量: {total}")
@@ -271,7 +240,6 @@ def menu_batch_transfer(tool: XHSToYouTube):
         input("\n按回车键继续...")
         return
     
-    # 执行批量搬运
     print()
     try:
         tool.batch_transfer(
@@ -301,7 +269,6 @@ def menu_update_credentials(tool: XHSToYouTube):
     choice = select_option(options, "请选择要更新的凭证")
     
     if choice == 0 or choice == 2:
-        # 更新 Cookie
         print("\n" + "=" * 50)
         print("[更新] 小红书 Cookie")
         print("=" * 50)
@@ -322,7 +289,6 @@ def menu_update_credentials(tool: XHSToYouTube):
             print("[跳过] 未输入内容")
     
     if choice == 1 or choice == 2:
-        # 更新 Token
         print("\n" + "=" * 50)
         print("[更新] YouTube OAuth Token")
         print("=" * 50)
@@ -356,7 +322,6 @@ def menu_check_status(tool: XHSToYouTube):
         print(f"    路径: {status.path}")
         print(f"    状态: {status.message}")
     
-    # 额外检查 Token 过期时间
     if TOKEN_FILE.exists():
         try:
             with open(TOKEN_FILE, 'r') as f:

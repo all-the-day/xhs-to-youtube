@@ -2,16 +2,19 @@
 """
 小红书到 YouTube 视频搬运工具 - 测试用例
 
-运行: python test_flow.py
+运行: python -m tests.test_flow
 """
 
 import sys
 import os
+from pathlib import Path
 
 # 添加项目路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
-from core import XHSToYouTube, COOKIES_FILE, CREDENTIALS_FILE, TOKEN_FILE
+from src.core import XHSToYouTube
+from src.config import COOKIES_FILE, CREDENTIALS_FILE, TOKEN_FILE
 
 
 def test_credentials():
@@ -34,8 +37,6 @@ def test_credentials():
     print("\n测试 YouTube API 连接...")
     youtube = tool.get_youtube_service()
     
-    # 当前 token 只有 youtube.upload 权限，验证服务对象创建成功即可
-    # 如需读取频道信息，需要添加 https://www.googleapis.com/auth/youtube.readonly scope
     if youtube:
         print("✅ YouTube API 连接成功（上传权限已就绪）")
     else:
@@ -51,8 +52,6 @@ def test_video_stream_selection():
     print("测试 2: 视频流选择（去水印）")
     print("=" * 50)
     
-    # 直接测试实际下载功能中的视频流选择
-    # 因为模拟数据格式与实际页面差异较大
     test_url = "http://xhslink.com/o/6fDiSoovKl5"
     
     tool = XHSToYouTube()
@@ -60,7 +59,6 @@ def test_video_stream_selection():
     
     print(f"标题: {result['title']}")
     
-    # 检查视频是否成功下载（已选择无水印版本）
     assert os.path.exists(result['video_path']), "视频文件不存在"
     
     print("✅ 视频流选择测试通过（已选择无水印版本）\n")
@@ -75,7 +73,6 @@ def test_title_extraction():
     
     import re
     
-    # 模拟不同的页面内容
     test_cases = [
         ('<title>测试视频标题 - 小红书</title>', "测试视频标题"),
         ('<title>另一个标题 - 小红书</title>', "另一个标题"),
@@ -104,7 +101,6 @@ def test_download_video():
     print("测试 4: 视频下载（已在测试2中完成）")
     print("=" * 50)
     
-    # 视频下载已在测试2中完成
     print("✅ 视频下载测试已通过（见测试2）\n")
     return True
 
@@ -117,20 +113,17 @@ def test_full_transfer():
     
     tool = XHSToYouTube()
     
-    # 1. 验证 YouTube API 可用
     print("1. 验证 YouTube API 连接...")
     youtube = tool.get_youtube_service()
     assert youtube is not None, "YouTube API 连接失败"
     print("   ✅ YouTube API 连接正常")
     
-    # 2. 验证下载功能（使用已有测试视频或跳过）
     print("\n2. 检查视频下载功能...")
     print("   ✅ 视频下载功能已在测试 2 中验证")
     
-    # 3. 测试元数据生成
     print("\n3. 测试元数据生成...")
-    title = tool.generate_bilingual_title("测试标题", "Test Title")
-    assert "测试标题" in title and "Test Title" in title, "双语标题生成失败"
+    title = tool.generate_english_title("测试标题", "Test Title")
+    assert "测试标题" in title or "Test Title" in title, "标题生成失败"
     print(f"   生成的标题: {title}")
     
     desc = tool.generate_description("测试描述", "https://example.com", "uploader")
