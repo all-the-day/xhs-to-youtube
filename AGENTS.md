@@ -6,69 +6,222 @@
 - 自动下载小红书视频（无水印）
 - OAuth 2.0 授权 YouTube 上传
 - 自动去除视频水印
-- 双语标题生成
+- AI 翻译标题和描述（支持 DeepLX、MyMemory、DeepL、OpenAI）
 - 批量获取用户视频列表（URL 带 xsec_token 确保可访问）
 - 批量上传视频列表（随机间隔、自动跳过已上传）
+- 每日上传限制检测（默认 10 个/天）
 
 **版本**: 1.5.0
 
 ## 技术栈
 
-- **Python 3.8+**
+- **Python 3.10+**
 - **Google YouTube Data API v3** - 视频上传
 - **OAuth 2.0** - Google 账号授权
+- **OpenAI API** - 可选，AI 翻译
 
 ## 项目结构
 
 ```
 xhs-to-youtube/
-├── __init__.py       # Python 包初始化
-├── core.py           # 核心逻辑类 XHSToYouTube
-├── main.py           # 命令行入口（子命令：transfer/fetch/batch/update/status）
-├── interactive.py    # 交互式命令行界面
-├── test_flow.py      # 测试套件
-├── setup.sh          # 环境配置脚本
-├── .gitignore        # Git 忽略配置
-├── cookies.txt       # 小红书 Cookie (需配置)
-├── credentials.json  # Google OAuth 凭证 (需配置)
-├── token.json        # OAuth Token (自动生成)
-├── video_list.json   # fetch 默认输出文件
-├── uploaded.json     # 已上传记录 (自动生成)
-└── videos/           # 视频缓存目录
+├── main.py              # 兼容入口（包装器）
+├── pyproject.toml       # 项目配置
+├── src/
+│   ├── __init__.py      # Python 包初始化
+│   ├── cli.py           # CLI 入口（子命令：transfer/fetch/batch/update/status）
+│   ├── core.py          # 核心逻辑类 XHSToYouTube
+│   ├── config.py        # 配置常量
+│   ├── models.py        # 数据类定义
+│   ├── download.py      # 视频下载模块
+│   ├── upload.py        # YouTube 上传模块
+│   ├── fetch.py         # 用户视频列表获取模块
+│   ├── translate.py     # 翻译服务模块
+│   └── interactive.py   # 交互式命令行界面
+├── tests/
+│   ├── __init__.py
+│   └── test_flow.py     # 测试套件
+├── config/
+│   └── config.example.json  # 配置示例
+├── cache/
+│   └── videos/          # 视频缓存目录
+├── data/
+│   ├── video_list.json  # fetch 输出文件
+│   └── uploaded.json    # 已上传记录
+├── cookies.txt          # 小红书 Cookie (需配置)
+├── credentials.json     # Google OAuth 凭证 (需配置)
+└── token.json           # OAuth Token (自动生成)
 ```
 
-## 核心类
+## 核心模块
 
-### XHSToYouTube (`core.py`)
+### XHSToYouTube (`src/core.py`)
 
-主要方法：
-- `download_video(url, title=None, description=None)` - 下载小红书视频（自动选择无水印版本，支持传入已有元数据避免重复请求）
-- `_select_best_video_stream(page_text)` - 解析视频流并选择无水印版本
-- `get_youtube_service()` - 获取 YouTube API 服务
-- `authorize_youtube()` - OAuth 授权（本地服务器方式）
-- `get_authorization_url()` - 获取授权 URL
-- `authorize_youtube_with_code(code)` - 使用授权码完成授权
-- `upload_to_youtube()` - 上传视频到 YouTube
-- `transfer(xhs_url, title=None, description=None, ...)` - 完整搬运流程
-- `fetch_user_videos(user_url, output_file, page_size)` - 获取用户主页视频列表（支持分页）
-- `batch_transfer(video_list_path, ...)` - 批量搬运视频列表
-- `check_credentials()` - 检查凭证状态
-- `update_cookie(content)` - 更新小红书 Cookie（支持 JSON 和 Netscape 格式）
-- `_load_uploaded_records()` - 加载已上传记录
-- `_save_uploaded_record(record)` - 保存上传记录
-- `_is_uploaded(note_id)` - 检查视频是否已上传
+核心协调类，整合各子模块功能。
+
+**主要方法：**
+| 方法 | 说明 |
+|------|------|
+| `transfer(xhs_url, ...)` | 完整搬运流程（下载 → 翻译 → 上传） |
+| `batch_transfer(video_list_path, ...)` | 批量搬运视频列表 |
+| `fetch_user_videos(user_url, ...)` | 获取用户主页视频列表 |
+| `download_video(url, ...)` | 下载小红书视频 |
+| `upload_to_youtube(...)` | 上传视频到 YouTube |
+| `translate(text, target_type)` | 翻译文本 |
+| `check_credentials()` | 检查凭证状态 |
+| `update_cookie(content)` | 更新小红书 Cookie |
+| `check_upload_limit()` | 检查每日上传限制 |
+| `get_authorization_url()` | 获取 OAuth 授权 URL |
+| `authorize_youtube_with_code(code)` | 使用授权码完成授权 |
+
+### VideoDownloader (`src/download.py`)
+
+视频下载模块，处理：
+- 小红书视频页面解析
+- 无水印视频流选择（h265 优先）
+- 视频文件下载
+
+### YouTubeUploader (`src/upload.py`)
+
+YouTube 上传模块，处理：
+- OAuth 2.0 认证流程
+- 视频上传（支持断点续传）
+- 凭证状态检查
+
+### VideoFetcher (`src/fetch.py`)
+
+用户视频列表获取模块，支持三种方式：
+1. **API 方式**（优先）- 直接调用小红书 API
+2. **页面解析**（回退）- 解析页面 HTML
+3. **Playwright**（备选）- 通过远程浏览器获取
+
+### TranslateService (`src/translate.py`)
+
+翻译服务模块，支持多种 API：
+
+| 服务 | 配置字段 | 说明 |
+|------|----------|------|
+| DeepLX | `deeplx_url` | 免费，需本地部署 |
+| MyMemory | 无需配置 | 免费，5000 字符/天限额 |
+| DeepL | `deepl_api_key` | 官方 API |
+| OpenAI | `openai_api_key` | GPT 翻译 |
+
+**翻译优先级：** DeepLX → MyMemory → DeepL → OpenAI
+
+## 运行命令
+
+### 安装
+
+```bash
+# 使用 pip
+pip install -e .
+
+# 或直接安装依赖
+pip install google-auth-oauthlib google-auth-httplib2 google-api-python-client requests
+
+# 可选：翻译功能
+pip install openai
+
+# 可选：Playwright 方式获取视频列表
+pip install playwright && playwright install chromium
+```
+
+### 命令行使用
+
+```bash
+# 交互式模式（推荐新手）
+python -m src.cli -i
+# 或
+python3 main.py -i
+
+# 搬运单个视频（默认公开，自动去水印）
+python -m src.cli transfer "https://www.xiaohongshu.com/explore/xxx"
+
+# 搬运视频 + AI 翻译
+python -m src.cli transfer "小红书URL" --translate
+
+# 搬运视频 + 手动指定英文标题
+python -m src.cli transfer "小红书URL" --title-en "English Title"
+
+# 自定义标签和隐私设置
+python -m src.cli transfer "小红书URL" --tags "vlog,life" --privacy unlisted
+
+# 保留本地视频
+python -m src.cli transfer "小红书URL" --keep-video
+
+# 获取用户主页所有视频链接（默认输出到 data/video_list.json）
+python -m src.cli fetch "https://www.xiaohongshu.com/user/profile/xxx"
+
+# 获取用户视频，每页20条
+python -m src.cli fetch "用户主页URL" --page-size 20 -o my_videos.json
+
+# 批量上传视频列表（使用默认 data/video_list.json）
+python -m src.cli batch
+
+# 批量上传 + AI 翻译
+python -m src.cli batch --translate
+
+# 批量上传指定文件，自定义间隔时间
+python -m src.cli batch --input my_videos.json --interval-min 15 --interval-max 45
+
+# 强制重新上传所有视频（不跳过已上传）
+python -m src.cli batch --force
+
+# 更新所有凭证（Cookie + Token）
+python -m src.cli update
+
+# 只更新 Cookie
+python -m src.cli update --cookie
+
+# 只更新 Token
+python -m src.cli update --token
+
+# 查看凭证状态
+python -m src.cli status
+```
+
+## 配置文件
+
+### cookies.txt
+
+小红书 Cookie 文件，支持 **JSON** 和 **Netscape** 两种格式。
+
+**导出方法：**
+1. 登录小红书网站
+2. 使用 Cookie Editor 等扩展导出 Cookie
+3. 选择 JSON 格式导出，直接粘贴即可（脚本自动转换）
+
+### credentials.json
+
+Google Cloud Console 下载的 OAuth 2.0 客户端凭证：
+1. 创建 Google Cloud 项目
+2. 启用 YouTube Data API v3
+3. 配置 OAuth 同意屏幕（外部用户）
+4. 创建 OAuth 客户端 ID（桌面应用）
+5. 下载 JSON 文件
+
+### token.json
+
+OAuth 授权后自动生成，存储访问令牌。
+
+### config/config.json（可选）
+
+翻译服务配置，参考 `config/config.example.json`：
+
+```json
+{
+  "deeplx_url": "http://localhost:1188",
+  "proxies": {},
+  "deepl_api_key": "",
+  "deepl_free": true,
+  "openai_api_key": "",
+  "openai_base_url": "https://api.openai.com/v1",
+  "openai_model": "gpt-4o-mini"
+}
+```
+
+## 数据结构
 
 ### fetch_user_videos 返回结构
-
-```python
-# 方法签名
-def fetch_user_videos(self, user_url: str, output_file: str = None, page_size: int = 10) -> dict
-```
-
-**参数说明：**
-- `user_url`: 用户主页 URL
-- `output_file`: 输出文件路径（默认 `video_list.json`）
-- `page_size`: 每页获取数量（默认 10 条）
 
 ```json
 {
@@ -79,36 +232,12 @@ def fetch_user_videos(self, user_url: str, output_file: str = None, page_size: i
     {
       "note_id": "笔记ID",
       "title": "视频标题",
-      "url": "https://www.xiaohongshu.com/explore/xxx?xsec_token=xxx&xsec_source=pc_user",
+      "url": "https://www.xiaohongshu.com/explore/xxx?xsec_token=xxx",
       "xsec_token": "访问令牌",
       "desc": "视频描述"
     }
   ]
 }
-```
-
-### 凭证状态类
-
-```python
-@dataclass
-class CredentialStatus:
-    name: str      # 凭证名称
-    exists: bool   # 文件是否存在
-    valid: bool    # 是否有效
-    message: str   # 状态消息
-    path: str      # 文件路径
-```
-
-### 上传记录类
-
-```python
-@dataclass
-class UploadRecord:
-    note_id: str       # 小红书笔记 ID
-    youtube_id: str    # YouTube 视频 ID
-    youtube_url: str   # YouTube 视频链接
-    title: str         # 视频标题
-    uploaded_at: str   # 上传时间
 ```
 
 ### batch_transfer 返回结构
@@ -128,6 +257,26 @@ class UploadRecord:
     }
   ]
 }
+```
+
+### 数据类
+
+```python
+@dataclass
+class CredentialStatus:
+    name: str      # 凭证名称
+    exists: bool   # 文件是否存在
+    valid: bool    # 是否有效
+    message: str   # 状态消息
+    path: str      # 文件路径
+
+@dataclass
+class UploadRecord:
+    note_id: str       # 小红书笔记 ID
+    youtube_id: str    # YouTube 视频 ID
+    youtube_url: str   # YouTube 视频链接
+    title: str         # 视频标题
+    uploaded_at: str   # 上传时间
 ```
 
 ## 去水印功能
@@ -152,145 +301,21 @@ h264: WM_X264_MP4_web      → 有水印
 h265: X265_MP4_WEB_114     → 无水印 ✓
 ```
 
-## 运行命令
+## 每日上传限制
 
-### 环境配置
+默认限制每日上传 10 个视频，可在 `src/config.py` 中修改 `DAILY_UPLOAD_LIMIT`。
 
-```bash
-# 安装依赖
-pip install google-api-python-client google-auth-oauthlib google-auth-httplib2 requests
-
-# 或运行配置脚本
-bash setup.sh
-```
-
-### 命令行使用
-
-```bash
-# 交互式模式（推荐新手使用）
-python3 main.py -i
-
-# 搬运单个视频（默认公开，自动去水印）
-python3 main.py transfer "https://www.xiaohongshu.com/explore/xxx"
-
-# 搬运视频并添加英文标题（生成双语标题）
-python3 main.py transfer "小红书URL" --title-en "English Title"
-
-# 自定义标签和隐私设置
-python3 main.py transfer "小红书URL" --tags "vlog,life" --privacy unlisted
-
-# 保留本地视频
-python3 main.py transfer "小红书URL" --keep-video
-
-# 获取用户主页所有视频链接（默认输出到 video_list.json）
-python3 main.py fetch "https://www.xiaohongshu.com/user/profile/xxx"
-
-# 获取用户视频，每页20条
-python3 main.py fetch "https://www.xiaohongshu.com/user/profile/xxx" --page-size 20
-
-# 获取用户视频并保存到指定文件
-python3 main.py fetch "https://www.xiaohongshu.com/user/profile/xxx" --output my_videos.json
-
-# 批量上传视频列表（使用默认 video_list.json）
-python3 main.py batch
-
-# 批量上传指定文件，自定义间隔时间
-python3 main.py batch --input my_videos.json --interval-min 15 --interval-max 45
-
-# 强制重新上传所有视频（不跳过已上传）
-python3 main.py batch --force
-
-# 更新所有凭证（Cookie + Token）
-python3 main.py update
-
-# 只更新 Cookie
-python3 main.py update --cookie
-
-# 只更新 Token
-python3 main.py update --token
-
-# 查看凭证状态
-python3 main.py status
-```
-
-## 配置文件
-
-### cookies.txt
-小红书 Cookie 文件，支持 **JSON** 和 **Netscape** 两种格式。
-
-**导出方法：**
-1. 登录小红书网站
-2. 使用 Cookie Editor 等扩展导出 Cookie
-3. 选择 JSON 格式导出，直接粘贴即可（脚本自动转换）
-4. 或转换为 Netscape 格式保存
-
-**JSON 格式（推荐）：**
-直接粘贴浏览器扩展导出的 JSON 数组即可。
-
-**Netscape 格式示例：**
-```
-xiaohongshu.com	TRUE	/	FALSE	1802674392	a1	cookie_value
-```
-
-**更新 Cookie：**
-```bash
-# 交互式更新
-python3 main.py update --cookie
-
-# 或使用交互式模式
-python3 main.py -i
-```
-
-### credentials.json
-Google Cloud Console 下载的 OAuth 2.0 客户端凭证：
-1. 创建 Google Cloud 项目
-2. 启用 YouTube Data API v3
-3. 配置 OAuth 同意屏幕（外部用户）
-4. 创建 OAuth 客户端 ID（桌面应用）
-5. 下载 JSON 文件
-
-### token.json
-OAuth 授权后自动生成，存储访问令牌。
-
-**更新 Token：**
-```bash
-# 交互式更新
-python3 main.py update --token
-
-# 或使用交互式模式
-python3 main.py -i
-```
-
-### 凭证状态检查
-
-```bash
-# 查看所有凭证状态
-python3 main.py status
-```
-
-输出示例：
-```
-[✓] 小红书 Cookie
-    路径: /path/to/cookies.txt
-    状态: 已配置
-
-[✓] YouTube Token
-    路径: /path/to/token.json
-    状态: 有效
-
-[Token 过期时间] 2026-03-21T10:30:00Z
-```
-
-## OAuth 授权流程
-
-首次运行时，脚本会自动打开浏览器进行授权，授权成功后自动生成 `token.json`。
+达到限制时：
+- 批量上传自动停止
+- 显示剩余配额提示
+- 建议第二天继续
 
 ## 交互式模式
 
-推荐新手使用交互式模式，提供友好的菜单界面：
+推荐新手使用交互式模式：
 
 ```bash
-python3 main.py -i
+python -m src.cli -i
 ```
 
 **功能菜单：**
@@ -307,19 +332,21 @@ python3 main.py -i
 - 操作确认，防止误操作
 - 清屏刷新，界面整洁
 
-## 视频元数据
+## 测试
 
-### 标题
-- 默认使用原视频标题
-- 可选添加英文标题，生成双语格式：`【原标题】English Title`
+```bash
+# 运行测试套件
+python -m tests.test_flow
+```
 
-### 描述
-- 原视频描述（如有）
-- 标注"原创"
+**测试内容：**
+1. 凭证状态检查（验证 YouTube API 连接，不上传视频）
+2. 视频流选择（去水印）
+3. 标题提取
+4. 视频下载
+5. 搬运流程准备检查（验证 API 连接和元数据生成，不上传视频）
 
-### 隐私设置
-- 默认：公开 (public)
-- 可选：不公开 (unlisted)、私享 (private)
+**注意：** 测试不会实际上传视频到 YouTube，仅验证 API 认证和下载功能。
 
 ## 开发约定
 
@@ -327,27 +354,19 @@ python3 main.py -i
 - 进度值范围：0-100
 - 错误处理：返回 `(success: bool, message: str)` 元组
 - 编码：UTF-8
+- Python 版本：3.10+
 
 ## Git 开发规范
 
 ### 分支管理策略
 
 ```
-master        # 主分支，稳定版本（测试通过）
-├── feature/xxx   # 功能分支（保留）
-├── fix/xxx        # 修复分支（保留）
-├── refactor/xxx   # 重构分支（保留）
-└── docs/xxx       # 文档分支（保留）
+master              # 主分支，稳定版本（测试通过）
+├── feature/xxx     # 功能分支
+├── fix/xxx         # 修复分支
+├── refactor/xxx    # 重构分支
+└── docs/xxx        # 文档分支
 ```
-
-### 分支命名规范
-
-| 类型 | 命名 | 示例 |
-|------|------|------|
-| 功能 | `feature/功能名` | `feature/add-batch-upload` |
-| 修复 | `fix/问题描述` | `fix/watermark-detection` |
-| 重构 | `refactor/重构内容` | `refactor/remove-gui` |
-| 文档 | `docs/文档内容` | `docs/update-readme` |
 
 ### 提交消息规范
 
@@ -362,93 +381,45 @@ master        # 主分支，稳定版本（测试通过）
 | `test` | 测试相关 |
 | `chore` | 构建/工具变更 |
 
-### 开发流程
-
-1. **创建分支**
-   ```bash
-   git checkout master
-   git pull
-   git checkout -b feature/新功能名
-   ```
-
-2. **开发与提交**
-   ```bash
-   git add .
-   git commit -m "feat: 添加XXX功能"
-   ```
-
-3. **回归测试（必须）**
-   ```bash
-   python3 test_flow.py
-   ```
-
-4. **合并回主分支**
-   ```bash
-   git checkout master
-   git merge feature/新功能名
-   # 删除功能分支
-   ```
-
-5. **清理上下文**
-   ```
-   执行 /clear 清理开发上下文，准备下一次开发
-   ```
-
 ### 合并检查清单
 
 - [ ] 代码已提交
-- [ ] 回归测试通过 (`python3 test_flow.py`)
+- [ ] 回归测试通过 (`python -m tests.test_flow`)
 - [ ] 无遗留的调试代码
-
-## 依赖版本
-
-```
-google-api-python-client
-google-auth-oauthlib
-google-auth-httplib2
-requests
-```
-
-## 测试
-
-```bash
-# 运行测试套件
-python3 test_flow.py
-```
-
-测试内容包括：
-1. 凭证状态检查（验证 YouTube API 连接，不上传视频）
-2. 视频流选择（去水印）
-3. 标题提取
-4. 视频下载
-5. 搬运流程准备检查（验证 API 连接和元数据生成，不上传视频）
-
-**注意：** 测试不会实际上传视频到 YouTube，仅验证 API 认证和下载功能。当前 OAuth scope 仅有 `youtube.upload` 权限，如需读取频道信息需要添加 `youtube.readonly` 权限。
 
 ## .gitignore
 
-敏感文件和生成文件已配置忽略：
-
 **敏感配置文件：**
-- `cookies.txt` - 小红书 Cookie
-- `credentials.json` - Google OAuth 凭证
-- `token.json` - OAuth Token
+- `cookies.txt`
+- `credentials.json`
+- `token.json`
 
 **生成文件：**
-- `videos/*.mp4`, `videos/*.webm` - 视频缓存
-- `video_list.json` - fetch 输出文件
-- `uploaded.json` - 已上传记录
+- `cache/videos/*.mp4`
+- `data/video_list.json`
+- `data/uploaded.json`
 
 **开发文件：**
-- `__pycache__/` - Python 缓存
-- `venv/`, `env/` - 虚拟环境
-- `.dev_context/` - 开发上下文
-- `*.log` - 日志文件
+- `__pycache__/`
+- `*.pyc`
+- `.venv/`
 
-**测试文件：**
-- `test.txt` - 测试输出
-- `test_videos.json` - 测试视频列表
-- `test_fetch_result.json` - 测试获取结果
+## 依赖
+
+**核心依赖：**
+```
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.1.0
+google-api-python-client>=2.0.0
+requests>=2.28.0
+```
+
+**可选依赖：**
+```
+openai>=1.0.0          # AI 翻译
+playwright>=1.40.0     # Playwright 方式获取视频列表
+pytest>=7.0.0          # 开发测试
+```
 
 ## 测试参考
 

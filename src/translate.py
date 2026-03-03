@@ -38,9 +38,9 @@ class TranslateService:
             self._config = {}
         return self._config
 
-    def _translate_with_youdao(self, text: str) -> str:
+    def _translate_with_mymemory(self, text: str) -> str:
         """
-        使用有道翻译 API（免费，无需注册）
+        使用 MyMemory 翻译 API（免费，无需注册，每天 5000 字符限额）
         """
         import requests
 
@@ -48,38 +48,31 @@ class TranslateService:
         proxies = config.get('proxies')
 
         try:
-            url = "https://fanyi.youdao.com/translate"
+            url = "https://api.mymemory.translated.net/get"
             params = {
-                "doctype": "json",
-                "type": "ZH_CN2EN",
-                "i": text
-            }
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Referer": "https://fanyi.youdao.com/"
+                "q": text,
+                "langpair": "zh-CN|en"
             }
 
-            response = requests.get(url, params=params, headers=headers, proxies=proxies, timeout=15)
+            response = requests.get(url, params=params, proxies=proxies, timeout=15)
 
             if response.status_code != 200:
-                self._log(f"[警告] 有道翻译请求失败: HTTP {response.status_code}")
+                self._log(f"[警告] MyMemory 翻译请求失败: HTTP {response.status_code}")
                 return text
 
             result = response.json()
 
-            if result.get("translateResult"):
-                translations = result["translateResult"][0]
-                if translations:
-                    translated = " ".join([t.get("tgt", "") for t in translations if t.get("tgt")])
-                    if translated:
-                        self._log(f"[翻译] {text[:20]}... -> {translated[:20]}...")
-                        return translated
+            if result.get("responseStatus") == 200 and result.get("responseData"):
+                translated = result["responseData"].get("translatedText", "")
+                if translated:
+                    self._log(f"[翻译] {text[:20]}... -> {translated[:20]}...")
+                    return translated
 
-            self._log("[警告] 有道翻译返回空结果，使用原文")
+            self._log("[警告] MyMemory 翻译返回空结果，使用原文")
             return text
 
         except Exception as e:
-            self._log(f"[错误] 有道翻译失败: {e}")
+            self._log(f"[错误] MyMemory 翻译失败: {e}")
             return text
 
     def _translate_with_deeplx(self, text: str) -> str:
@@ -212,7 +205,7 @@ Rules:
         """
         翻译文本（自动选择翻译服务）
 
-        优先级：DeepLX > 有道翻译 > DeepL > OpenAI
+        优先级：DeepLX > MyMemory > DeepL > OpenAI
         """
         config = self._load_config()
 
@@ -222,9 +215,9 @@ Rules:
             if result != text:
                 return result
 
-        # 有道翻译
-        if not config.get('disable_youdao'):
-            result = self._translate_with_youdao(text)
+        # MyMemory 翻译（免费，无需注册）
+        if not config.get('disable_mymemory'):
+            result = self._translate_with_mymemory(text)
             if result != text:
                 return result
 
