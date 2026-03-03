@@ -24,6 +24,10 @@ class UploadRecord:
     youtube_url: str
     title: str
     uploaded_at: str
+    # 时间分析字段
+    upload_hour: Optional[int] = None         # 上传小时 (0-23)
+    time_slot: Optional[str] = None           # 时间段标签 (黄金时段/次选时段/非推荐时段)
+    recommendation_followed: Optional[bool] = None  # 是否遵循推荐时段
 
 
 @dataclass

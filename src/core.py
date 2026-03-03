@@ -362,6 +362,37 @@ class XHSToYouTube:
         records = self._load_uploaded_records()
         return records.get(note_id)
 
+    def _get_time_slot_info(self, upload_hour: int) -> tuple[str, bool]:
+        """
+        获取上传时间段标签
+        
+        Returns:
+            (time_slot, followed_recommendation) 元组
+        """
+        from src.analyze import get_time_recommendation
+        
+        recommendation = get_time_recommendation()
+        if not recommendation:
+            return "未知", True
+        
+        # 解析推荐时段
+        def parse_time(time_str: str) -> tuple[int, int]:
+            parts = time_str.split("-")
+            start = int(parts[0].split(":")[0])
+            end = int(parts[1].split(":")[0])
+            return start, end
+        
+        optimal_start, optimal_end = parse_time(recommendation.optimal_time)
+        secondary_start, secondary_end = parse_time(recommendation.secondary_time)
+        
+        # 判断当前时段
+        if optimal_start <= upload_hour < optimal_end:
+            return "黄金时段", True
+        elif secondary_start <= upload_hour < secondary_end:
+            return "次选时段", True
+        else:
+            return "非推荐时段", False
+
     # ==================== 批量搬运 ====================
 
     def batch_transfer(
@@ -486,19 +517,28 @@ class XHSToYouTube:
                 )
 
                 # 记录上传结果
+                upload_hour = datetime.now().hour
+                time_slot, followed = self._get_time_slot_info(upload_hour)
+                
                 record = UploadRecord(
                     note_id=note_id,
                     youtube_id=result['video_id'],
                     youtube_url=result['video_url'],
                     title=video_title or '未知标题',
-                    uploaded_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    uploaded_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    upload_hour=upload_hour,
+                    time_slot=time_slot,
+                    recommendation_followed=followed,
                 )
                 self._save_uploaded_record(record)
                 uploaded_records[note_id] = {
                     'youtube_id': record.youtube_id,
                     'youtube_url': record.youtube_url,
                     'title': record.title,
-                    'uploaded_at': record.uploaded_at
+                    'uploaded_at': record.uploaded_at,
+                    'upload_hour': upload_hour,
+                    'time_slot': time_slot,
+                    'recommendation_followed': followed,
                 }
 
                 results['success_count'] += 1
