@@ -36,6 +36,31 @@ class AudienceRegion:
 
 
 @dataclass
+class AgeGroup:
+    """年龄分组数据"""
+    age_range: str      # 年龄段 (e.g., "18-24 岁")
+    views_percent: float  # 观看次数占比
+    watch_time_percent: float  # 观看时长占比
+
+
+@dataclass
+class GenderData:
+    """性别数据"""
+    gender: str         # 性别 (e.g., "女", "男")
+    views_percent: float  # 观看次数占比
+    watch_time_percent: float  # 观看时长占比
+
+
+@dataclass
+class DemographicsData:
+    """人口统计数据（年龄+性别）"""
+    age_groups: list[AgeGroup] = field(default_factory=list)
+    genders: list[GenderData] = field(default_factory=list)
+    # 组合数据：年龄+性别交叉
+    age_gender_breakdown: list[dict] = field(default_factory=list)
+
+
+@dataclass
 class TimeRecommendation:
     """时间推荐结果"""
     optimal_time: str           # 最佳发布时间段 (e.g., "20:00-22:00")
@@ -46,12 +71,37 @@ class TimeRecommendation:
 
 
 @dataclass
-class TimezoneCache:
-    """时区分析缓存"""
-    source_file: str                    # 源 CSV 文件路径
-    source_mtime: float                 # 源文件修改时间戳
-    source_md5: str                     # 源文件 MD5
-    analyzed_at: str                    # 分析时间
-    total_views: int                    # 总观看量
+class AudienceInsight:
+    """受众洞察"""
+    primary_age_group: str      # 主要年龄段
+    primary_age_percent: float  # 主要年龄段占比
+    gender_ratio: str           # 性别比例 (e.g., "男60% 女40%")
+    dominant_gender: str        # 主导性别
+    content_suggestion: str     # 内容风格建议
+
+
+@dataclass
+class AudienceCache:
+    """受众分析缓存"""
+    # 地理位置数据
+    geo_source_file: str = ""
+    geo_source_mtime: float = 0
+    geo_source_md5: str = ""
+    
+    # 人口统计数据
+    demo_source_file: str = ""
+    demo_source_mtime: float = 0
+    demo_source_md5: str = ""
+    
+    analyzed_at: str = ""
+    total_views: int = 0
+    
+    # 分析结果
     regions: list[AudienceRegion] = field(default_factory=list)
+    demographics: Optional[DemographicsData] = None
     recommendation: Optional[TimeRecommendation] = None
+    insight: Optional[AudienceInsight] = None
+
+
+# 向后兼容别名
+TimezoneCache = AudienceCache

@@ -143,38 +143,42 @@ def cmd_status(args):
 
 
 def cmd_analyze(args):
-    """分析地理位置数据，生成时间推荐"""
+    """分析受众数据，生成完整画像报告"""
     from src.analyze import (
         analyze_and_cache,
-        format_time_suggestion,
-        get_time_recommendation,
+        format_audience_report,
     )
     from datetime import datetime
     
     print("\n" + "=" * 50)
-    print("时区分析 - 最佳发布时间推荐")
+    print("受众画像分析")
     print("=" * 50)
     
     # 强制重新分析
     if args.force:
         print("[模式] 强制重新分析")
-        cache = analyze_and_cache(force=True, log_callback=print)
-    else:
-        cache = analyze_and_cache(log_callback=print)
     
-    if cache and cache.recommendation:
+    cache = analyze_and_cache(force=args.force, log_callback=print)
+    
+    if cache:
         current_hour = datetime.now().hour
-        suggestion = format_time_suggestion(cache.recommendation, current_hour)
-        print(suggestion)
+        report = format_audience_report(cache, current_hour)
+        print(report)
         
         # 显示详细地区分布
         if args.verbose and cache.regions:
-            print("\n📊 受众地区分布 (Top 10):")
+            print("\n📊 详细地区分布 (Top 10):")
             for i, region in enumerate(cache.regions[:10]):
                 print(f"  {i+1}. {region.code}: {region.views:,} 次 ({region.weight*100:.1f}%) [{region.timezone}]")
+        
+        # 显示详细年龄分布
+        if args.verbose and cache.demographics and cache.demographics.age_gender_breakdown:
+            print("\n📊 详细年龄-性别交叉数据:")
+            for item in cache.demographics.age_gender_breakdown[:10]:
+                print(f"  {item['age_range']} / {item['gender']}: {item['views_percent']:.2f}%")
     else:
-        print("\n⚠️  未能生成时间推荐")
-        print("请确保 data 目录下有包含'表格数据.csv'的地理位置数据目录")
+        print("\n⚠️  未能生成受众画像")
+        print("请确保 data 目录下有包含'表格数据.csv'的数据目录")
 
 
 def main():
