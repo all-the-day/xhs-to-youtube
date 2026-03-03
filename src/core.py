@@ -307,6 +307,8 @@ class XHSToYouTube:
         self._log("=" * 60)
         self._log(f"视频链接: {result['video_url']}")
 
+        # 返回结果包含翻译后的标题
+        result['title'] = title
         return result
 
     # ==================== 上传记录管理 ====================
@@ -520,11 +522,13 @@ class XHSToYouTube:
                 upload_hour = datetime.now().hour
                 time_slot, followed = self._get_time_slot_info(upload_hour)
                 
+                # 使用翻译后的标题（如果有），否则使用原始标题
+                final_title = result.get('title', video_title) or '未知标题'
                 record = UploadRecord(
                     note_id=note_id,
                     youtube_id=result['video_id'],
                     youtube_url=result['video_url'],
-                    title=video_title or '未知标题',
+                    title=final_title,
                     uploaded_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     upload_hour=upload_hour,
                     time_slot=time_slot,
