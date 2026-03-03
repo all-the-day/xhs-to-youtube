@@ -142,6 +142,41 @@ def cmd_status(args):
     print("\n" + "=" * 50)
 
 
+def cmd_analyze(args):
+    """分析地理位置数据，生成时间推荐"""
+    from src.analyze import (
+        analyze_and_cache,
+        format_time_suggestion,
+        get_time_recommendation,
+    )
+    from datetime import datetime
+    
+    print("\n" + "=" * 50)
+    print("时区分析 - 最佳发布时间推荐")
+    print("=" * 50)
+    
+    # 强制重新分析
+    if args.force:
+        print("[模式] 强制重新分析")
+        cache = analyze_and_cache(force=True, log_callback=print)
+    else:
+        cache = analyze_and_cache(log_callback=print)
+    
+    if cache and cache.recommendation:
+        current_hour = datetime.now().hour
+        suggestion = format_time_suggestion(cache.recommendation, current_hour)
+        print(suggestion)
+        
+        # 显示详细地区分布
+        if args.verbose and cache.regions:
+            print("\n📊 受众地区分布 (Top 10):")
+            for i, region in enumerate(cache.regions[:10]):
+                print(f"  {i+1}. {region.code}: {region.views:,} 次 ({region.weight*100:.1f}%) [{region.timezone}]")
+    else:
+        print("\n⚠️  未能生成时间推荐")
+        print("请确保 data 目录下有包含'表格数据.csv'的地理位置数据目录")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="小红书视频搬运到 YouTube",
@@ -162,6 +197,12 @@ def main():
 
     # 批量上传视频列表
     python -m src.cli batch
+
+    # 分析地理位置数据，获取最佳发布时间
+    python -m src.cli analyze
+
+    # 强制重新分析
+    python -m src.cli analyze --force --verbose
 
     # 更新所有凭证
     python -m src.cli update
@@ -236,6 +277,14 @@ def main():
     # status 子命令
     status_parser = subparsers.add_parser("status", help="查看凭证状态")
     status_parser.set_defaults(func=cmd_status)
+    
+    # analyze 子命令
+    analyze_parser = subparsers.add_parser("analyze", help="分析地理位置数据，推荐最佳发布时间")
+    analyze_parser.add_argument("--force", "-f", action="store_true",
+                       help="强制重新分析（忽略缓存）")
+    analyze_parser.add_argument("--verbose", "-v", action="store_true",
+                       help="显示详细地区分布")
+    analyze_parser.set_defaults(func=cmd_analyze)
     
     args = parser.parse_args()
     

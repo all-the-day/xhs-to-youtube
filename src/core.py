@@ -237,7 +237,8 @@ class XHSToYouTube:
         keep_video: bool = False,
         translate: bool = False,
         translate_title: bool = True,
-        translate_desc: bool = True
+        translate_desc: bool = True,
+        show_time_suggestion: bool = True
     ) -> dict:
         """完整的搬运流程"""
         self._log("=" * 60)
@@ -245,6 +246,18 @@ class XHSToYouTube:
         if translate:
             self._log("[模式] 英文翻译模式")
         self._log("=" * 60)
+
+        # 显示时间推荐并检查是否在推荐时段
+        if show_time_suggestion:
+            is_good_time, _ = self._show_time_suggestion()
+            
+            # 非推荐时段时询问确认
+            if not is_good_time:
+                self._log("")
+                confirm = input("是否继续上传? [y/N]: ").strip().lower()
+                if confirm != 'y':
+                    self._log("[取消] 用户取消上传")
+                    return {'success': False, 'error': 'user_cancelled', 'message': '用户取消上传'}
 
         # 1. 下载视频
         video_info = self.download_video(xhs_url, title, description)
@@ -526,3 +539,40 @@ class XHSToYouTube:
                 self._log(f"  - {v['title']}: {v['error']}")
 
         return results
+
+    # ==================== 时间推荐 ====================
+
+    def _show_time_suggestion(self) -> tuple[bool, any]:
+        """
+        显示发布时间建议
+        
+        Returns:
+            (is_good_time, recommendation) - 是否在推荐时段 + 推荐信息
+        """
+        from src.analyze import (
+            analyze_and_cache,
+            format_time_suggestion,
+            get_time_recommendation,
+            is_good_upload_time,
+        )
+        from datetime import datetime
+
+        # 先尝试获取缓存
+        recommendation = get_time_recommendation()
+
+        # 如果没有缓存，尝试分析
+        if not recommendation:
+            cache = analyze_and_cache(log_callback=self._log)
+            if cache:
+                recommendation = cache.recommendation
+
+        if recommendation:
+            current_hour = datetime.now().hour
+            suggestion = format_time_suggestion(recommendation, current_hour)
+            self._log(suggestion)
+            
+            # 检查是否在推荐时段
+            is_good, _ = is_good_upload_time(current_hour)
+            return (is_good, recommendation)
+        
+        return (True, None)
