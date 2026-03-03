@@ -53,7 +53,8 @@ def cmd_fetch(args):
 
 def cmd_batch(args):
     """执行批量搬运"""
-    translate = args.translate or args.translate_title or args.translate_desc
+    # 默认开启翻译，除非指定 --no-translate
+    translate = not args.no_translate or args.translate_title or args.translate_desc
     
     tool = XHSToYouTube()
     tool.batch_transfer(
@@ -64,8 +65,8 @@ def cmd_batch(args):
         keep_video=args.keep_video,
         skip_uploaded=not args.force,
         translate=translate,
-        translate_title=args.translate or args.translate_title,
-        translate_desc=args.translate or args.translate_desc
+        translate_title=translate or args.translate_title,
+        translate_desc=translate or args.translate_desc
     )
 
 
@@ -262,8 +263,8 @@ def main():
                        help="上传后保留本地视频文件")
     batch_parser.add_argument("--force", action="store_true",
                        help="强制重新上传（不跳过已上传视频）")
-    batch_parser.add_argument("--translate", action="store_true",
-                       help="启用自动翻译（标题+描述）")
+    batch_parser.add_argument("--no-translate", action="store_true",
+                       help="禁用自动翻译（默认开启翻译）")
     batch_parser.add_argument("--translate-title", action="store_true",
                        help="仅翻译标题")
     batch_parser.add_argument("--translate-desc", action="store_true",
