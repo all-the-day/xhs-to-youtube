@@ -1,0 +1,409 @@
+{
+  "geo_source_file": "/home/duoban/xhs-to-youtube/data/地理位置 2025-12-02_2026-03-02 jack chen/表格数据.csv",
+  "geo_source_mtime": 1772453456.0,
+  "geo_source_md5": "081c2e55c0935d0667b04336511b6619",
+  "demo_source_file": "/home/duoban/xhs-to-youtube/data/观看者年龄_观看者性别 2026-02-02_2026-03-02 jack chen/表格数据.csv",
+  "demo_source_mtime": 1772455276.0,
+  "demo_source_md5": "2e73f35c22bb0da03a697163074eb766",
+  "analyzed_at": "2026-03-03 13:42:06",
+  "total_views": 21173,
+  "regions": [
+    {
+      "code": "TW",
+      "views": 5532,
+      "weight": 0.2613,
+      "timezone": "UTC+8"
+    },
+    {
+      "code": "JP",
+      "views": 1994,
+      "weight": 0.0942,
+      "timezone": "UTC+9"
+    },
+    {
+      "code": "VN",
+      "views": 1882,
+      "weight": 0.0889,
+      "timezone": "UTC+7"
+    },
+    {
+      "code": "HK",
+      "views": 1666,
+      "weight": 0.0787,
+      "timezone": "UTC+8"
+    },
+    {
+      "code": "MY",
+      "views": 1439,
+      "weight": 0.068,
+      "timezone": "UTC+8"
+    },
+    {
+      "code": "ID",
+      "views": 1424,
+      "weight": 0.0673,
+      "timezone": "UTC+7"
+    },
+    {
+      "code": "MM",
+      "views": 984,
+      "weight": 0.0465,
+      "timezone": "UTC+6:30"
+    },
+    {
+      "code": "IN",
+      "views": 845,
+      "weight": 0.0399,
+      "timezone": "UTC+5:30"
+    },
+    {
+      "code": "KH",
+      "views": 550,
+      "weight": 0.026,
+      "timezone": "UTC+7"
+    },
+    {
+      "code": "IQ",
+      "views": 506,
+      "weight": 0.0239,
+      "timezone": "UTC+3"
+    },
+    {
+      "code": "SG",
+      "views": 480,
+      "weight": 0.0227,
+      "timezone": "UTC+8"
+    },
+    {
+      "code": "PH",
+      "views": 452,
+      "weight": 0.0213,
+      "timezone": "UTC+8"
+    },
+    {
+      "code": "TR",
+      "views": 345,
+      "weight": 0.0163,
+      "timezone": "UTC+3"
+    },
+    {
+      "code": "BR",
+      "views": 340,
+      "weight": 0.0161,
+      "timezone": "UTC-3"
+    },
+    {
+      "code": "TH",
+      "views": 250,
+      "weight": 0.0118,
+      "timezone": "UTC+7"
+    },
+    {
+      "code": "US",
+      "views": 246,
+      "weight": 0.0116,
+      "timezone": "UTC-5"
+    },
+    {
+      "code": "BD",
+      "views": 239,
+      "weight": 0.0113,
+      "timezone": "UTC+6"
+    },
+    {
+      "code": "IT",
+      "views": 236,
+      "weight": 0.0111,
+      "timezone": "UTC+1"
+    },
+    {
+      "code": "UZ",
+      "views": 236,
+      "weight": 0.0111,
+      "timezone": "UTC+5"
+    },
+    {
+      "code": "DE",
+      "views": 210,
+      "weight": 0.0099,
+      "timezone": "UTC+1"
+    },
+    {
+      "code": "KR",
+      "views": 196,
+      "weight": 0.0093,
+      "timezone": "UTC+9"
+    },
+    {
+      "code": "MX",
+      "views": 162,
+      "weight": 0.0077,
+      "timezone": "UTC-6"
+    },
+    {
+      "code": "SA",
+      "views": 130,
+      "weight": 0.0061,
+      "timezone": "UTC+3"
+    },
+    {
+      "code": "SY",
+      "views": 106,
+      "weight": 0.005,
+      "timezone": "UTC+3"
+    },
+    {
+      "code": "EG",
+      "views": 100,
+      "weight": 0.0047,
+      "timezone": "UTC+2"
+    },
+    {
+      "code": "RU",
+      "views": 86,
+      "weight": 0.0041,
+      "timezone": "UTC+3"
+    },
+    {
+      "code": "PL",
+      "views": 72,
+      "weight": 0.0034,
+      "timezone": "UTC+1"
+    },
+    {
+      "code": "ES",
+      "views": 61,
+      "weight": 0.0029,
+      "timezone": "UTC+1"
+    },
+    {
+      "code": "PK",
+      "views": 55,
+      "weight": 0.0026,
+      "timezone": "UTC+5"
+    },
+    {
+      "code": "CA",
+      "views": 54,
+      "weight": 0.0026,
+      "timezone": "UTC-5"
+    },
+    {
+      "code": "FR",
+      "views": 45,
+      "weight": 0.0021,
+      "timezone": "UTC+1"
+    },
+    {
+      "code": "DZ",
+      "views": 42,
+      "weight": 0.002,
+      "timezone": "UTC+1"
+    },
+    {
+      "code": "IR",
+      "views": 35,
+      "weight": 0.0017,
+      "timezone": "UTC+3:30"
+    },
+    {
+      "code": "GR",
+      "views": 35,
+      "weight": 0.0017,
+      "timezone": "UTC+2"
+    },
+    {
+      "code": "RS",
+      "views": 34,
+      "weight": 0.0016,
+      "timezone": "UTC+1"
+    },
+    {
+      "code": "KZ",
+      "views": 32,
+      "weight": 0.0015,
+      "timezone": "UTC+6"
+    },
+    {
+      "code": "RO",
+      "views": 29,
+      "weight": 0.0014,
+      "timezone": "UTC+2"
+    },
+    {
+      "code": "NL",
+      "views": 22,
+      "weight": 0.001,
+      "timezone": "UTC+1"
+    },
+    {
+      "code": "UA",
+      "views": 21,
+      "weight": 0.001,
+      "timezone": "UTC+2"
+    },
+    {
+      "code": "LB",
+      "views": 0,
+      "weight": 0.0,
+      "timezone": "UTC+2"
+    },
+    {
+      "code": "MN",
+      "views": 0,
+      "weight": 0.0,
+      "timezone": "UTC+8"
+    }
+  ],
+  "demographics": {
+    "age_groups": [
+      {
+        "age_range": "25–34 岁",
+        "views_percent": 33.13,
+        "watch_time_percent": 33.29
+      },
+      {
+        "age_range": "35–44 岁",
+        "views_percent": 25.18,
+        "watch_time_percent": 22.03
+      },
+      {
+        "age_range": "45–54 岁",
+        "views_percent": 12.09,
+        "watch_time_percent": 11.81
+      },
+      {
+        "age_range": "65 岁以上",
+        "views_percent": 11.41,
+        "watch_time_percent": 13.43
+      },
+      {
+        "age_range": "55–64 岁",
+        "views_percent": 10.57,
+        "watch_time_percent": 10.22
+      },
+      {
+        "age_range": "18–24 岁",
+        "views_percent": 6.24,
+        "watch_time_percent": 8.06
+      },
+      {
+        "age_range": "13–17 岁",
+        "views_percent": 1.39,
+        "watch_time_percent": 1.16
+      }
+    ],
+    "genders": [
+      {
+        "gender": "男",
+        "views_percent": 53.27,
+        "watch_time_percent": 55.28
+      },
+      {
+        "gender": "女",
+        "views_percent": 46.74,
+        "watch_time_percent": 44.72
+      }
+    ],
+    "age_gender_breakdown": [
+      {
+        "age_range": "13–17 岁",
+        "gender": "女",
+        "views_percent": 0.57,
+        "watch_time_percent": 0.49
+      },
+      {
+        "age_range": "13–17 岁",
+        "gender": "男",
+        "views_percent": 0.82,
+        "watch_time_percent": 0.67
+      },
+      {
+        "age_range": "18–24 岁",
+        "gender": "女",
+        "views_percent": 3.0,
+        "watch_time_percent": 2.98
+      },
+      {
+        "age_range": "18–24 岁",
+        "gender": "男",
+        "views_percent": 3.24,
+        "watch_time_percent": 5.08
+      },
+      {
+        "age_range": "25–34 岁",
+        "gender": "女",
+        "views_percent": 15.39,
+        "watch_time_percent": 14.22
+      },
+      {
+        "age_range": "25–34 岁",
+        "gender": "男",
+        "views_percent": 17.74,
+        "watch_time_percent": 19.07
+      },
+      {
+        "age_range": "35–44 岁",
+        "gender": "女",
+        "views_percent": 11.43,
+        "watch_time_percent": 9.02
+      },
+      {
+        "age_range": "35–44 岁",
+        "gender": "男",
+        "views_percent": 13.75,
+        "watch_time_percent": 13.01
+      },
+      {
+        "age_range": "45–54 岁",
+        "gender": "女",
+        "views_percent": 4.55,
+        "watch_time_percent": 4.5
+      },
+      {
+        "age_range": "45–54 岁",
+        "gender": "男",
+        "views_percent": 7.54,
+        "watch_time_percent": 7.31
+      },
+      {
+        "age_range": "55–64 岁",
+        "gender": "女",
+        "views_percent": 5.2,
+        "watch_time_percent": 5.45
+      },
+      {
+        "age_range": "55–64 岁",
+        "gender": "男",
+        "views_percent": 5.37,
+        "watch_time_percent": 4.77
+      },
+      {
+        "age_range": "65 岁以上",
+        "gender": "女",
+        "views_percent": 6.6,
+        "watch_time_percent": 8.06
+      },
+      {
+        "age_range": "65 岁以上",
+        "gender": "男",
+        "views_percent": 4.81,
+        "watch_time_percent": 5.37
+      }
+    ]
+  },
+  "recommendation": {
+    "optimal_time": "19:00-23:00",
+    "secondary_time": "12:00-13:00",
+    "user_timezone": "Asia/Shanghai",
+    "primary_tz_weight": 0.45,
+    "reason": "受众: 上班族，地区: TW(26%), JP(9%), VN(8%)"
+  },
+  "insight": {
+    "primary_age_group": "25–34 岁",
+    "primary_age_percent": 33.13,
+    "gender_ratio": "男53% 女46%",
+    "dominant_gender": "男",
+    "content_suggestion": "职场/生活、理性实用、繁体字幕、日文字幕可选"
+  }
+}
