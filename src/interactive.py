@@ -207,6 +207,19 @@ def menu_batch_transfer(tool: XHSToYouTube):
     
     translate = confirm("是否启用自动翻译（标题+描述翻译为英文）?")
     
+    # 上传数量限制
+    print(f"\n上传数量设置:")
+    limit_input = input_with_default("上传数量限制", "不限制")
+    if limit_input.lower() in ('不限制', '', '0', 'all'):
+        limit = 0
+    else:
+        try:
+            limit = int(limit_input)
+            if limit <= 0:
+                limit = 0
+        except ValueError:
+            limit = 0
+    
     print("\n上传间隔设置:")
     interval_min = input_with_default("最小间隔（秒）", "10")
     interval_max = input_with_default("最大间隔（秒）", "30")
@@ -226,7 +239,9 @@ def menu_batch_transfer(tool: XHSToYouTube):
     
     print("\n" + "-" * 30)
     print("即将执行批量搬运:")
-    print(f"  视频数量: {total}")
+    print(f"  视频数量: {total if limit == 0 else min(limit, total)}")
+    if limit > 0:
+        print(f"  数量限制: {limit}")
     if translate:
         print(f"  翻译模式: 启用（标题+描述）")
     print(f"  上传间隔: {interval_min}-{interval_max} 秒")
@@ -251,7 +266,8 @@ def menu_batch_transfer(tool: XHSToYouTube):
             skip_uploaded=skip_uploaded,
             translate=translate,
             translate_title=True,
-            translate_desc=True
+            translate_desc=True,
+            limit=limit
         )
     except Exception as e:
         print(f"\n[错误] {e}")

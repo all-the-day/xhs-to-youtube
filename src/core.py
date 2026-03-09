@@ -407,7 +407,8 @@ class XHSToYouTube:
         skip_uploaded: bool = True,
         translate: bool = False,
         translate_title: bool = True,
-        translate_desc: bool = True
+        translate_desc: bool = True,
+        limit: int = 0
     ) -> Dict[str, Any]:
         """批量搬运视频"""
         from src.config import VIDEO_LIST_FILE
@@ -436,6 +437,11 @@ class XHSToYouTube:
         if not videos:
             self._log("[警告] 视频列表为空")
             return {'success': True, 'total': 0, 'skipped': 0, 'success_count': 0, 'failed': 0}
+
+        # 应用上传数量限制
+        if limit > 0:
+            videos = videos[:limit]
+            self._log(f"[限制] 本次最多上传 {limit} 个视频")
 
         self._log(f"[批量] 共 {len(videos)} 个视频待处理")
 

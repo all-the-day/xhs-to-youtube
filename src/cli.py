@@ -66,7 +66,8 @@ def cmd_batch(args):
         skip_uploaded=not args.force,
         translate=translate,
         translate_title=translate or args.translate_title,
-        translate_desc=translate or args.translate_desc
+        translate_desc=translate or args.translate_desc,
+        limit=args.limit
     )
 
 
@@ -203,6 +204,9 @@ def main():
     # 批量上传视频列表
     python -m src.cli batch
 
+    # 批量上传，限制上传数量
+    python -m src.cli batch --limit 5
+
     # 分析地理位置数据，获取最佳发布时间
     python -m src.cli analyze
 
@@ -269,6 +273,8 @@ def main():
                        help="仅翻译标题")
     batch_parser.add_argument("--translate-desc", action="store_true",
                        help="仅翻译描述")
+    batch_parser.add_argument("--limit", "-l", type=int, default=0,
+                       help="上传数量限制 (默认: 0=不限制)")
     batch_parser.set_defaults(func=cmd_batch)
     
     # update 子命令
