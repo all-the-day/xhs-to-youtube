@@ -1,0 +1,14 @@
+[Unit]
+Description=XHS to YouTube Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/iflow_space/xhs-to-youtube
+ExecStart=/usr/bin/python3 -m src.bot
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,2 @@
+[console_scripts]
+xhs2yt = src.cli:main
