@@ -239,5 +239,71 @@ def test_upload_record_structure():
     print("\n✅ 上传记录数据结构测试通过\n")
 
 
+def test_bot_run_command_uses_schedule_time(monkeypatch):
+    """测试 Bot 的 /run 命令会正确调用定时任务入口。"""
+    import src.bot as bot_module
+
+    called = {}
+
+    def fake_run_scheduled_upload(time_str=None, limit=None, log_callback=None):
+        called["time_str"] = time_str
+        called["limit"] = limit
+        return {"success": True, "success_count": 1, "skipped": 0, "failed": 0}
+
+    def fake_notify_upload_result(task_time, result):
+        called["notified"] = (task_time, result)
+        return True
+
+    class FakeThread:
+        def __init__(self, target):
+            self.target = target
+
+        def start(self):
+            self.target()
+
+    monkeypatch.setattr("src.schedule.run_scheduled_upload", fake_run_scheduled_upload)
+    monkeypatch.setattr("src.notification.notify_upload_result", fake_notify_upload_result)
+    monkeypatch.setattr(bot_module.threading, "Thread", FakeThread)
+    monkeypatch.setattr(bot_module, "send_message", lambda *args, **kwargs: True)
+
+    message = bot_module.handle_run_command(["08:00", "2"])
+
+    assert "已启动上传任务" in message
+    assert called["time_str"] == "08:00"
+    assert called["limit"] == 2
+    assert called["notified"][0] == "08:00"
+
+
+def test_schedule_status_is_minute_aware(monkeypatch):
+    """测试今日调度状态会按分钟判断任务状态。"""
+    import src.schedule as schedule_module
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 4, 11, 8, 30, 0)
+
+    monkeypatch.setattr(schedule_module, "datetime", FixedDateTime)
+    monkeypatch.setattr(
+        schedule_module,
+        "list_schedule_tasks",
+        lambda: [
+            {"time": "08:00", "limit": 1, "enabled": True, "description": "早间上传"},
+            {"time": "08:30", "limit": 2, "enabled": True, "description": "加餐上传"},
+            {"time": "09:00", "limit": 3, "enabled": True, "description": "上午上传"},
+        ],
+    )
+    monkeypatch.setattr("src.config.UPLOADED_FILE", Path("/tmp/nonexistent_uploaded.json"))
+
+    status = schedule_module.get_today_schedule_status()
+
+    assert status["current_time"] == "08:30"
+    assert [task["status"] for task in status["tasks"]] == [
+        "completed",
+        "running",
+        "pending",
+    ]
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__]))

@@ -158,7 +158,7 @@ def handle_run_command(args: list[str]) -> str:
     # 在后台执行上传
     def run_in_background():
         try:
-            result = run_scheduled_upload(task_time=task_time, limit=limit)
+            result = run_scheduled_upload(time_str=task_time, limit=limit)
             # 发送结果通知
             from src.notification import notify_upload_result
             notify_upload_result(task_time, result)

@@ -18,6 +18,14 @@ from src.config import (
 )
 
 
+def _parse_schedule_time(time_str: str) -> datetime | None:
+    """解析 HH:MM 格式的调度时间。"""
+    try:
+        return datetime.strptime(time_str, "%H:%M")
+    except ValueError:
+        return None
+
+
 def setup_schedule_logger() -> logging.Logger:
     """设置调度日志记录器"""
     ensure_logs_dir()
@@ -83,6 +91,7 @@ def log_execution(
 
 def run_scheduled_upload(
     time_str: str | None = None,
+    task_time: str | None = None,
     limit: int | None = None,
     log_callback: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
@@ -90,6 +99,7 @@ def run_scheduled_upload(
     
     Args:
         time_str: 时间字符串，格式为 "HH:MM"。如果为 None，则使用当前时间匹配
+        task_time: `time_str` 的兼容别名，避免旧调用方出错
         limit: 上传数量限制。如果为 None，则从配置中获取
         log_callback: 日志回调函数
     
@@ -106,7 +116,7 @@ def run_scheduled_upload(
     current_time = now.strftime("%H:%M")
     
     # 确定任务时间
-    task_time = time_str or current_time
+    task_time = time_str or task_time or current_time
     
     # 获取任务配置
     task = get_schedule_task_for_time(task_time)
@@ -226,7 +236,7 @@ def get_today_schedule_status() -> dict[str, Any]:
     
     now = datetime.now()
     today_str = now.strftime("%Y-%m-%d")
-    current_hour = now.hour
+    current_time = now.strftime("%H:%M")
     
     # 加载任务配置
     tasks = list_schedule_tasks()
@@ -255,16 +265,13 @@ def get_today_schedule_status() -> dict[str, Any]:
         limit = task.get("limit", 3)
         
         # 解析时间
-        parts = time_str.split(":")
-        if len(parts) != 2:
+        if not _parse_schedule_time(time_str):
             continue
-        
-        task_hour = int(parts[0])
-        
-        # 判断任务状态
-        if current_hour > task_hour:
+
+        # 判断任务状态，精确到分钟
+        if current_time > time_str:
             status = "completed"
-        elif current_hour == task_hour:
+        elif current_time == time_str:
             status = "running"
         else:
             status = "pending"
