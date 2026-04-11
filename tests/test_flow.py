@@ -305,5 +305,213 @@ def test_schedule_status_is_minute_aware(monkeypatch):
     ]
 
 
+def test_bot_auth_code_command(monkeypatch):
+    """测试 Telegram Bot 可以用授权码完成 token 更新。"""
+    import src.bot as bot_module
+
+    calls = {}
+
+    class FakeTool:
+        def authorize_youtube_with_code(self, code):
+            calls["code"] = code
+            return True, "授权成功！凭证已保存到: token.json"
+
+    monkeypatch.setattr("src.core.XHSToYouTube", FakeTool)
+
+    result = bot_module.handle_auth_code_command(["abc123"])
+
+    assert calls["code"] == "abc123"
+    assert "YouTube 授权完成" in result
+    assert "/token_status" in result
+
+
+def test_notify_upload_result_includes_failure_details(monkeypatch):
+    """测试失败通知会包含失败明细。"""
+    import src.notification as notification_module
+
+    captured = {}
+
+    def fake_send_notification(message, level="info", title=None):
+        captured["message"] = message
+        captured["level"] = level
+        captured["title"] = title
+        return True
+
+    monkeypatch.setattr(notification_module, "send_notification", fake_send_notification)
+
+    result = {
+        "success": False,
+        "message": "批量上传异常",
+        "failed_videos": [
+            {"title": "视频A", "error": "未找到视频链接"},
+            {"title": "视频B", "error": "下载失败"},
+            {"title": "视频C", "error": "权限不足"},
+            {"title": "视频D", "error": "稍后重试"},
+        ],
+    }
+
+    ok = notification_module.notify_upload_result("08:00", result)
+
+    assert ok is True
+    assert captured["level"] == "warning"
+    assert captured["title"] == "定时上传异常"
+    assert "失败明细" in captured["message"]
+    assert "视频A: 未找到视频链接" in captured["message"]
+    assert "视频B: 下载失败" in captured["message"]
+    assert "还有 1 条失败记录" in captured["message"]
+
+
+def test_bot_notify_test_command(monkeypatch):
+    """测试 Telegram Bot 通知自检命令。"""
+    import src.bot as bot_module
+
+    calls = {}
+
+    def fake_test_notification_delivery(message="通知通信测试", channel="all"):
+        calls["message"] = message
+        calls["channel"] = channel
+        return {
+            "channel": channel,
+            "success": True,
+            "message": "通知发送成功",
+            "telegram": {"message": "Telegram 发送成功"},
+            "feishu": {"message": "飞书未配置"},
+        }
+
+    monkeypatch.setattr("src.notification.test_notification_delivery", fake_test_notification_delivery)
+
+    result = bot_module.handle_notify_test_command(["telegram"])
+
+    assert calls["channel"] == "telegram"
+    assert "通知自检结果" in result
+    assert "Telegram 发送成功" in result
+
+
+def test_bot_register_commands(monkeypatch):
+    """测试 Bot 启动时会注册 Telegram 菜单命令。"""
+    import src.bot as bot_module
+
+    captured = {}
+
+    class FakeResponse:
+        def json(self):
+            return {"ok": True, "result": True}
+
+    def fake_post(url, json=None, proxies=None, timeout=None):
+        captured["url"] = url
+        captured["payload"] = json
+        captured["proxies"] = proxies
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(bot_module, "BOT_TOKEN", "fake-token")
+    monkeypatch.setattr("src.bot.requests.post", fake_post)
+
+    ok = bot_module.register_bot_commands()
+
+    assert ok is True
+    assert captured["url"] == "https://api.telegram.org/botfake-token/setMyCommands"
+    assert captured["payload"]["commands"] == bot_module.BOT_COMMANDS
+    assert captured["timeout"] == 15
+
+
+def test_bot_send_message_uses_plain_text(monkeypatch):
+    """测试 Bot 的普通回复不会强制使用 Markdown。"""
+    import src.bot as bot_module
+
+    captured = {}
+
+    def fake_send_telegram_message(token, chat_id, message, level="info", title=None, parse_mode="Markdown"):
+        captured["token"] = token
+        captured["chat_id"] = chat_id
+        captured["message"] = message
+        captured["parse_mode"] = parse_mode
+        return True
+
+    monkeypatch.setattr(bot_module, "BOT_TOKEN", "fake-token")
+    monkeypatch.setattr(bot_module, "CHAT_ID", "123456")
+    monkeypatch.setattr("src.bot.send_telegram_message", fake_send_telegram_message)
+
+    ok = bot_module.send_message("hello_world [link](example)")
+
+    assert ok is True
+    assert captured["chat_id"] == "123456"
+    assert captured["parse_mode"] is None
+
+
+def test_batch_transfer_marks_failure_as_failed(monkeypatch, tmp_path):
+    """测试批量上传在任一视频失败时会返回失败状态。"""
+    import src.core as core_module
+
+    video_list = tmp_path / "videos.json"
+    video_list.write_text(
+        """
+        {
+          "videos": [
+            {"note_id": "n1", "title": "视频1", "desc": "desc", "url": "https://example.com/1"}
+          ]
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    tool = core_module.XHSToYouTube()
+    monkeypatch.setattr(tool, "check_upload_limit", lambda: {"limit": 10, "used": 0, "remaining": 10})
+    monkeypatch.setattr(tool, "_load_uploaded_records", lambda: {})
+    monkeypatch.setattr(tool, "transfer", lambda **kwargs: (_ for _ in ()).throw(RuntimeError("token expired")))
+
+    result = tool.batch_transfer(video_list_path=str(video_list), limit=1, show_time_suggestion=False)
+
+    assert result["success"] is False
+    assert result["failed"] == 1
+    assert result["failed_videos"][0]["error"] == "token expired"
+
+
+def test_cmd_batch_sends_notification_on_failure(monkeypatch):
+    """测试 batch 命令会把失败结果送入通知层。"""
+    import src.cli as cli_module
+
+    calls = {}
+
+    def fake_batch_transfer(**kwargs):
+        calls["batch_kwargs"] = kwargs
+        return {
+            "success": False,
+            "message": "token expired",
+            "failed": 1,
+            "failed_videos": [{"title": "视频1", "error": "token expired"}],
+            "success_count": 0,
+            "skipped": 0,
+            "total": 1,
+        }
+
+    def fake_notify_upload_result(task_time, result, error=None):
+        calls["notify"] = (task_time, result, error)
+        return True
+
+    monkeypatch.setattr("src.notification.notify_upload_result", fake_notify_upload_result)
+    monkeypatch.setattr(cli_module.XHSToYouTube, "batch_transfer", lambda self, **kwargs: fake_batch_transfer(**kwargs))
+
+    class Args:
+        input = "videos.json"
+        interval_min = 1
+        interval_max = 1
+        privacy = "public"
+        keep_video = False
+        force = False
+        no_translate = True
+        translate_title = False
+        translate_desc = False
+        limit = 1
+        time_confirm = False
+
+    cli_module.cmd_batch(Args())
+
+    assert calls["batch_kwargs"]["limit"] == 1
+    assert calls["notify"][0] == "batch:videos.json"
+    assert calls["notify"][1]["success"] is False
+    assert calls["notify"][2] is None
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__]))

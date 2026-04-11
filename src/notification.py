@@ -345,6 +345,19 @@ def notify_upload_result(
         level = "warning"
         title = "定时上传异常"
         message = f"任务时间: {task_time}\n信息: {result.get('message', '未知错误')}"
+
+        failed_videos = result.get("failed_videos", [])
+        if failed_videos:
+            details = []
+            for video in failed_videos[:3]:
+                video_title = video.get("title", "未知标题")
+                video_error = video.get("error", "未知错误")
+                details.append(f"- {video_title}: {video_error}")
+
+            if details:
+                message += "\n\n失败明细:\n" + "\n".join(details)
+                if len(failed_videos) > 3:
+                    message += f"\n- ... 还有 {len(failed_videos) - 3} 条失败记录"
     
     return send_notification(message, level, title)
 

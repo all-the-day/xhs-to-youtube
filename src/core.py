@@ -623,6 +623,7 @@ class XHSToYouTube:
             for v in results['failed_videos']:
                 self._log(f"  - {v['title']}: {v['error']}")
 
+        results['success'] = results['failed'] == 0
         return results
 
     # ==================== 时间推荐 ====================

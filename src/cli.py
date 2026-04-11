@@ -59,9 +59,11 @@ def cmd_batch(args):
     """执行批量搬运"""
     # 默认开启翻译，除非指定 --no-translate
     translate = not args.no_translate or args.translate_title or args.translate_desc
-    
+    from src.notification import notify_upload_result
+    from pathlib import Path
+
     tool = XHSToYouTube()
-    tool.batch_transfer(
+    result = tool.batch_transfer(
         video_list_path=args.input,
         interval_min=args.interval_min,
         interval_max=args.interval_max,
@@ -74,6 +76,12 @@ def cmd_batch(args):
         limit=args.limit,
         show_time_suggestion=args.time_confirm,
     )
+
+    task_name = f"batch:{Path(args.input).name}" if args.input else "batch"
+    if result.get("success") or result.get("failed_videos"):
+        notify_upload_result(task_name, result)
+    else:
+        notify_upload_result(task_name, result, result.get("message"))
 
 
 def cmd_update(args):
@@ -289,7 +297,7 @@ def cmd_schedule(args):
     )
     
     # 发送通知
-    if result.get("success"):
+    if result.get("success") or result.get("failed_videos"):
         notify_upload_result(args.time or "auto", result)
     else:
         notify_upload_result(args.time or "auto", result, result.get("message"))
