@@ -1,21 +1,3 @@
-Metadata-Version: 2.4
-Name: xhs-to-youtube
-Version: 1.5.0
-Summary: 小红书视频搬运到 YouTube
-Author: duoban
-License: MIT
-Keywords: xiaohongshu,youtube,video,transfer
-Requires-Python: >=3.10
-Description-Content-Type: text/markdown
-Requires-Dist: google-auth-oauthlib>=1.0.0
-Requires-Dist: google-auth-httplib2>=0.1.0
-Requires-Dist: google-api-python-client>=2.0.0
-Requires-Dist: requests>=2.28.0
-Provides-Extra: translate
-Requires-Dist: openai>=1.0.0; extra == "translate"
-Provides-Extra: dev
-Requires-Dist: pytest>=7.0.0; extra == "dev"
-
 # xhs-to-youtube
 
 小红书视频搬运到 YouTube 的自动化工具。项目提供命令行、批量处理、定时任务和 Telegram Bot 控制入口，适合做视频抓取、翻译、上传和调度。

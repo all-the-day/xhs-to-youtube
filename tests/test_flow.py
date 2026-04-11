@@ -10,12 +10,17 @@ import os
 from pathlib import Path
 from datetime import datetime
 
+import pytest
+
 # 添加项目路径
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.core import XHSToYouTube
 from src.config import COOKIES_FILE, CREDENTIALS_FILE, TOKEN_FILE
+
+
+LIVE_NETWORK_TESTS = os.getenv("XHS_RUN_LIVE_TESTS") == "1"
 
 
 def test_credentials():
@@ -41,9 +46,12 @@ def test_credentials():
         print("⚠️ YouTube Token 已过期或不存在（上传时需要重新授权）")
     
     print("✅ 凭证检查通过\n")
-    return True
 
 
+@pytest.mark.skipif(
+    not LIVE_NETWORK_TESTS,
+    reason="需要 XHS_RUN_LIVE_TESTS=1 和可用网络才能执行真实下载测试",
+)
 def test_video_stream_selection():
     """测试视频流选择（无水印）- 使用实际页面"""
     print("=" * 50)
@@ -60,7 +68,6 @@ def test_video_stream_selection():
     assert os.path.exists(result['video_path']), "视频文件不存在"
     
     print("✅ 视频流选择测试通过（已选择无水印版本）\n")
-    return True
 
 
 def test_title_extraction():
@@ -77,6 +84,7 @@ def test_title_extraction():
     ]
     
     for html, expected in test_cases:
+        title = ""
         html_title_match = re.search(r'<title>([^<]+)</title>', html)
         if html_title_match:
             html_title = html_title_match.group(1)
@@ -90,7 +98,6 @@ def test_title_extraction():
         assert title == expected, f"标题提取错误: 期望 '{expected}', 实际 '{title}'"
     
     print("✅ 标题提取测试通过\n")
-    return True
 
 
 def test_download_video():
@@ -100,7 +107,6 @@ def test_download_video():
     print("=" * 50)
     
     print("✅ 视频下载测试已通过（见测试2）\n")
-    return True
 
 
 def test_full_transfer():
@@ -133,7 +139,6 @@ def test_full_transfer():
     print(f"   翻译结果: {translated}")
     
     print("\n✅ 搬运流程准备检查通过（未实际上传视频）\n")
-    return True
 
 
 def test_time_recommendation():
@@ -180,7 +185,6 @@ def test_time_recommendation():
         print(f"   {hour}:00 -> {status} ({msg})")
     
     print("\n✅ 时间推荐测试通过\n")
-    return True
 
 
 def test_time_slot_labeling():
@@ -206,7 +210,6 @@ def test_time_slot_labeling():
         print(f"   {hour}:00 -> {time_slot} (遵循推荐: {followed}) {status}")
     
     print("\n✅ 时间段标签测试通过\n")
-    return True
 
 
 def test_upload_record_structure():
@@ -237,10 +240,9 @@ def test_upload_record_structure():
     
     assert record.upload_hour == 20, "upload_hour 字段错误"
     assert record.time_slot == "黄金时段", "time_slot 字段错误"
-    assert record.recommendation_followed == True, "recommendation_followed 字段错误"
+    assert record.recommendation_followed is True, "recommendation_followed 字段错误"
     
     print("\n✅ 上传记录数据结构测试通过\n")
-    return True
 
 
 def run_tests():
@@ -262,11 +264,20 @@ def run_tests():
     
     passed = 0
     failed = 0
+    skipped = 0
     
     for name, test_func in tests:
+        if name == "视频流选择" and not LIVE_NETWORK_TESTS:
+            print(f"↷ 跳过测试: {name}（设置 XHS_RUN_LIVE_TESTS=1 后可启用）\n")
+            skipped += 1
+            continue
         try:
             test_func()
             passed += 1
+        except pytest.skip.Exception as e:
+            print(f"↷ 跳过测试: {name}")
+            print(f"   原因: {e}\n")
+            skipped += 1
         except AssertionError as e:
             print(f"❌ 测试失败: {name}")
             print(f"   原因: {e}\n")
@@ -277,7 +288,7 @@ def run_tests():
             failed += 1
     
     print("=" * 60)
-    print(f"测试结果: {passed} 通过, {failed} 失败")
+    print(f"测试结果: {passed} 通过, {skipped} 跳过, {failed} 失败")
     print("=" * 60)
     
     return failed == 0
