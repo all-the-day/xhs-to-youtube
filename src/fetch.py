@@ -38,13 +38,16 @@ class VideoFetcher:
         """加载小红书 Cookie"""
         cookies = {}
         if COOKIES_FILE.exists():
-            with open(COOKIES_FILE) as f:
-                for line in f:
-                    if line.startswith('#') or not line.strip():
-                        continue
-                    parts = line.strip().split('\t')
-                    if len(parts) >= 7:
-                        cookies[parts[5]] = parts[6]
+            try:
+                with open(COOKIES_FILE) as f:
+                    for line in f:
+                        if line.startswith('#') or not line.strip():
+                            continue
+                        parts = line.strip().split('\t')
+                        if len(parts) >= 7:
+                            cookies[parts[5]] = parts[6]
+            except (OSError, PermissionError, UnicodeDecodeError):
+                return cookies
         return cookies
 
     def _get_headers(self) -> Dict[str, str]:
@@ -132,8 +135,11 @@ class VideoFetcher:
                 self._log(f"[调试] API 响应: code={data.get('code')}, msg={data.get('msg', 'N/A')}")
                 resp_str = json.dumps(data, ensure_ascii=False)
                 self._log(f"[调试] 完整响应: {resp_str[:500]}...")
-            except Exception as e:
+            except requests.RequestException as e:
                 self._log(f"[错误] API 请求失败: {e}")
+                break
+            except json.JSONDecodeError as e:
+                self._log(f"[错误] API 响应解析失败: {e}")
                 break
 
             if data.get('code') != 0:

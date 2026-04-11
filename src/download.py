@@ -75,7 +75,7 @@ class VideoDownloader:
             try:
                 os.remove(path_to_clean)
                 self._log(f"[清理] 已删除部分下载文件: {path_to_clean}")
-            except Exception as e:
+            except OSError as e:
                 self._log(f"[警告] 删除部分文件失败: {e}")
 
     def _load_cookies(self) -> Dict[str, str]:
@@ -105,7 +105,7 @@ class VideoDownloader:
                         parts = line.strip().split('\t')
                         if len(parts) >= 7:
                             cookies[parts[5]] = parts[6]
-            except Exception as e:
+            except (OSError, PermissionError, UnicodeDecodeError, LookupError) as e:
                 self._log(f"[警告] Cookie 文件编码问题: {e}")
         
         return cookies
@@ -319,7 +319,7 @@ class VideoDownloader:
                             if total_size:
                                 progress = 10 + (downloaded / total_size) * 40
                                 self._progress(progress, f"下载中... {int(downloaded/total_size*100)}%")
-            except Exception as e:
+            except (OSError, ValueError, TypeError) as e:
                 self._cleanup_partial_file(video_path)
                 raise DownloadError(f"视频文件写入失败: {e}")
 
@@ -348,7 +348,7 @@ class VideoDownloader:
             self._log(f"[错误] 网络连接失败: {e}")
             self._cleanup_partial_file(video_path)
             raise NetworkConnectionError("网络连接失败，请检查网络设置")
-        except Exception as e:
+        except (requests.RequestException, OSError, ValueError, TypeError, KeyError) as e:
             self._log(f"[错误] 下载失败: {e}")
             self._cleanup_partial_file(video_path)
             raise DownloadError(f"下载失败: {e}")

@@ -375,7 +375,7 @@ def convert_time_range(time_range: str, offset_diff: float) -> str:
         end = int((end - offset_diff) % 24)
         
         return f"{start:02d}:00-{end:02d}:00"
-    except:
+    except (IndexError, ValueError, TypeError):
         return time_range
 
 

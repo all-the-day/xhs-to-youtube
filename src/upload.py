@@ -4,13 +4,14 @@ YouTube 上传模块
 """
 
 import json
+import os
 import sys
-from pathlib import Path
 from typing import Callable, Optional
 
 from src.config import CREDENTIALS_FILE, TOKEN_FILE, SCOPES, load_config
-AUTH_SESSION_FILE = TOKEN_FILE.with_name("youtube_auth_session.json")
 from src.models import CredentialStatus
+
+AUTH_SESSION_FILE = TOKEN_FILE.with_name("youtube_auth_session.json")
 
 # YouTube API 相关导入
 try:
@@ -77,6 +78,36 @@ class YouTubeUploader:
         if self.progress_callback:
             self.progress_callback(value, status)
 
+    def _load_token_credentials(self) -> Optional[Credentials]:
+        """加载本地 token 凭证"""
+        if not TOKEN_FILE.exists():
+            return None
+
+        self._log("[认证] 发现已有 token 文件")
+        try:
+            return Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+        except Exception as e:
+            self._log(f"[警告] Token 文件读取失败: {e}")
+            return None
+
+    def _save_token_credentials(self, creds: Credentials) -> None:
+        """保存 token 凭证到本地"""
+        TOKEN_FILE.write_text(creds.to_json(), encoding="utf-8")
+        self._log(f"[认证] 凭证已保存到: {TOKEN_FILE}")
+
+    def _apply_proxy_env(self) -> None:
+        """将配置中的代理同步到环境变量"""
+        config = load_config()
+        proxies = config.get("proxies", {})
+        http_proxy = proxies.get("http") or proxies.get("https", "")
+        if not http_proxy:
+            return
+
+        os.environ["http_proxy"] = http_proxy
+        os.environ["https_proxy"] = http_proxy
+        os.environ["HTTP_PROXY"] = http_proxy
+        os.environ["HTTPS_PROXY"] = http_proxy
+
     def check_credentials(self) -> dict:
         """检查凭证状态"""
         statuses = {}
@@ -122,41 +153,40 @@ class YouTubeUploader:
             )
 
         # 检查 Token 文件
-        if TOKEN_FILE.exists():
-            try:
-                creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
-                if creds.valid:
-                    statuses['token'] = CredentialStatus(
-                        name="YouTube Token",
-                        exists=True,
-                        valid=True,
-                        message="有效",
-                        path=str(TOKEN_FILE)
-                    )
-                elif creds.expired and creds.refresh_token:
-                    statuses['token'] = CredentialStatus(
-                        name="YouTube Token",
-                        exists=True,
-                        valid=False,
-                        message="已过期，需要刷新",
-                        path=str(TOKEN_FILE)
-                    )
-                else:
-                    statuses['token'] = CredentialStatus(
-                        name="YouTube Token",
-                        exists=True,
-                        valid=False,
-                        message="无效",
-                        path=str(TOKEN_FILE)
-                    )
-            except Exception as e:
+        creds = self._load_token_credentials()
+        if creds:
+            if creds.valid:
+                statuses['token'] = CredentialStatus(
+                    name="YouTube Token",
+                    exists=True,
+                    valid=True,
+                    message="有效",
+                    path=str(TOKEN_FILE)
+                )
+            elif creds.expired and creds.refresh_token:
                 statuses['token'] = CredentialStatus(
                     name="YouTube Token",
                     exists=True,
                     valid=False,
-                    message=f"读取失败: {str(e)[:30]}",
+                    message="已过期，需要刷新",
                     path=str(TOKEN_FILE)
                 )
+            else:
+                statuses['token'] = CredentialStatus(
+                    name="YouTube Token",
+                    exists=True,
+                    valid=False,
+                    message="无效",
+                    path=str(TOKEN_FILE)
+                )
+        elif TOKEN_FILE.exists():
+            statuses['token'] = CredentialStatus(
+                name="YouTube Token",
+                exists=True,
+                valid=False,
+                message="读取失败",
+                path=str(TOKEN_FILE)
+            )
         else:
             statuses['token'] = CredentialStatus(
                 name="YouTube Token",
@@ -177,31 +207,15 @@ class YouTubeUploader:
         self._log("[认证] 初始化 YouTube API...")
         self._log("=" * 50)
 
-        creds = None
-
-        if TOKEN_FILE.exists():
-            self._log(f"[认证] 发现已有 token 文件")
-            try:
-                creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
-            except Exception as e:
-                self._log(f"[警告] Token 文件读取失败: {e}")
+        creds = self._load_token_credentials()
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 self._log("[认证] Token 已过期，正在刷新...")
                 self._progress(55, "刷新认证 Token...")
                 try:
-                    config = load_config()
-                    proxies = config.get('proxies', {})
                     http_request = Request()
-                    if proxies.get('http') or proxies.get('https'):
-                        import os
-                        http_proxy = proxies.get('http') or proxies.get('https', '')
-                        if http_proxy:
-                            os.environ['http_proxy'] = http_proxy
-                            os.environ['https_proxy'] = http_proxy
-                            os.environ['HTTP_PROXY'] = http_proxy
-                            os.environ['HTTPS_PROXY'] = http_proxy
+                    self._apply_proxy_env()
                     creds.refresh(http_request)
                 except Exception as e:
                     self._log(f"[错误] Token 刷新失败: {e}")
@@ -225,9 +239,7 @@ class YouTubeUploader:
                     self._log(f"[错误] OAuth 授权失败: {e}")
                     raise AuthorizationError(f"OAuth 授权失败: {e}")
 
-            with open(TOKEN_FILE, 'w') as token:
-                token.write(creds.to_json())
-            self._log(f"[认证] 凭证已保存到: {TOKEN_FILE}")
+            self._save_token_credentials(creds)
 
         try:
             self.youtube_service = build('youtube', 'v3', credentials=creds)
@@ -313,8 +325,7 @@ class YouTubeUploader:
             flow.fetch_token(code=code)
             creds = flow.credentials
 
-            with open(TOKEN_FILE, 'w') as token:
-                token.write(creds.to_json())
+            self._save_token_credentials(creds)
 
             if AUTH_SESSION_FILE.exists():
                 AUTH_SESSION_FILE.unlink()
@@ -350,8 +361,7 @@ class YouTubeUploader:
             )
             creds = flow.run_local_server(port=0)
 
-            with open(TOKEN_FILE, 'w') as token:
-                token.write(creds.to_json())
+            self._save_token_credentials(creds)
 
             success_msg = f"授权成功！凭证已保存到: {TOKEN_FILE}"
             self._log(f"[授权] {success_msg}")

@@ -17,10 +17,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.core import XHSToYouTube
-from src.config import COOKIES_FILE, CREDENTIALS_FILE, TOKEN_FILE
-
-
-LIVE_NETWORK_TESTS = os.getenv("XHS_RUN_LIVE_TESTS") == "1"
+from src.config import CREDENTIALS_FILE, TOKEN_FILE
 
 
 def test_credentials():
@@ -48,10 +45,7 @@ def test_credentials():
     print("✅ 凭证检查通过\n")
 
 
-@pytest.mark.skipif(
-    not LIVE_NETWORK_TESTS,
-    reason="需要 XHS_RUN_LIVE_TESTS=1 和可用网络才能执行真实下载测试",
-)
+@pytest.mark.live_network
 def test_video_stream_selection():
     """测试视频流选择（无水印）- 使用实际页面"""
     print("=" * 50)
@@ -245,55 +239,5 @@ def test_upload_record_structure():
     print("\n✅ 上传记录数据结构测试通过\n")
 
 
-def run_tests():
-    """运行所有测试"""
-    print("\n" + "=" * 60)
-    print("小红书到 YouTube 视频搬运工具 - 测试套件")
-    print("=" * 60 + "\n")
-    
-    tests = [
-        ("凭证状态检查", test_credentials),
-        ("视频流选择", test_video_stream_selection),
-        ("标题提取", test_title_extraction),
-        ("视频下载", test_download_video),
-        ("完整搬运流程", test_full_transfer),
-        ("时间推荐功能", test_time_recommendation),
-        ("时间段标签", test_time_slot_labeling),
-        ("上传记录结构", test_upload_record_structure),
-    ]
-    
-    passed = 0
-    failed = 0
-    skipped = 0
-    
-    for name, test_func in tests:
-        if name == "视频流选择" and not LIVE_NETWORK_TESTS:
-            print(f"↷ 跳过测试: {name}（设置 XHS_RUN_LIVE_TESTS=1 后可启用）\n")
-            skipped += 1
-            continue
-        try:
-            test_func()
-            passed += 1
-        except pytest.skip.Exception as e:
-            print(f"↷ 跳过测试: {name}")
-            print(f"   原因: {e}\n")
-            skipped += 1
-        except AssertionError as e:
-            print(f"❌ 测试失败: {name}")
-            print(f"   原因: {e}\n")
-            failed += 1
-        except Exception as e:
-            print(f"❌ 测试异常: {name}")
-            print(f"   错误: {e}\n")
-            failed += 1
-    
-    print("=" * 60)
-    print(f"测试结果: {passed} 通过, {skipped} 跳过, {failed} 失败")
-    print("=" * 60)
-    
-    return failed == 0
-
-
 if __name__ == "__main__":
-    success = run_tests()
-    sys.exit(0 if success else 1)
+    raise SystemExit(pytest.main([__file__]))
