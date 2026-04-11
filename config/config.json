@@ -1,0 +1,20 @@
+{
+  "proxies": {},
+  "schedule": {
+    "tasks": [
+      {"time": "08:00", "limit": 1, "enabled": true, "description": "早间上传"},
+      {"time": "12:00", "limit": 1, "enabled": true, "description": "午间上传"},
+      {"time": "20:00", "limit": 1, "enabled": true, "description": "晚间上传"}
+    ],
+    "default_limit": 3,
+    "log_file": "logs/schedule.log",
+    "notification": {
+      "enabled": true,
+      "telegram_token": "8616988745:AAGU23z-qUJPaJRQ4BtVpTPywcBTBp4KqG4",
+      "telegram_chat_id": "8397515853",
+      "feishu_webhook": "",
+      "notify_on_success": true,
+      "notify_on_failure": true
+    }
+  }
+}

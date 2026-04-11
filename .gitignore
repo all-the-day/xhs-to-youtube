@@ -9,13 +9,6 @@ env/
 .env
 .venv/
 
-# 敏感配置文件
-cookies.txt
-credentials.json
-token.json
-config/config.json
-scripts/email_config.sh
-
 # 视频缓存
 cache/videos/*.mp4
 cache/videos/*.webm
@@ -49,11 +42,8 @@ test_fetch_result.json
 *.xlsx:Zone.Identifier
 header.txt
 
-# 旧文件 (重构后可删除)
-/core.py
-/main.py
-/interactive.py
-/__init__.py
-/test_flow.py
-/setup.sh
-/AGENTS.md
+# 凭证文件（敏感信息）
+cookies.txt
+credentials.json
+token.json
+
