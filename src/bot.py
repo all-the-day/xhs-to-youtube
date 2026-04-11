@@ -22,6 +22,19 @@ CHAT_ID = None
 POLLING_INTERVAL = 5  # 轮询间隔（秒）
 LAST_UPDATE_ID = 0
 
+BOT_COMMANDS = [
+    {"command": "status", "description": "查看今日上传状态"},
+    {"command": "tasks", "description": "查看定时任务列表"},
+    {"command": "run", "description": "手动触发上传任务"},
+    {"command": "enable", "description": "启用指定任务"},
+    {"command": "disable", "description": "禁用指定任务"},
+    {"command": "token_status", "description": "检查凭证状态"},
+    {"command": "update_token", "description": "生成 YouTube 授权链接"},
+    {"command": "auth", "description": "提交 YouTube 授权码"},
+    {"command": "notify_test", "description": "测试通知连通性"},
+    {"command": "help", "description": "显示帮助信息"},
+]
+
 
 def load_bot_config():
     """加载 Bot 配置"""
@@ -53,7 +66,27 @@ def send_message(text: str, chat_id: str = None) -> bool:
     """发送消息"""
     if not chat_id:
         chat_id = CHAT_ID
-    return send_telegram_message(BOT_TOKEN, chat_id, text, "info", None)
+    return send_telegram_message(BOT_TOKEN, chat_id, text, "info", None, parse_mode=None)
+
+
+def register_bot_commands() -> bool:
+    """向 Telegram 注册 bot 命令菜单。"""
+    if not BOT_TOKEN:
+        return False
+
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/setMyCommands"
+    payload = {"commands": BOT_COMMANDS}
+
+    proxy_url = get_proxy_url()
+    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+
+    try:
+        response = requests.post(url, json=payload, proxies=proxies, timeout=15)
+        data = response.json()
+        return bool(data.get("ok"))
+    except Exception as e:
+        print(f"注册 Bot 命令菜单失败: {e}")
+        return False
 
 
 def handle_command(command: str, args: list[str], chat_id: str) -> str:
@@ -70,7 +103,9 @@ def handle_command(command: str, args: list[str], chat_id: str) -> str:
 /enable <时间> - 启用任务
 /disable <时间> - 禁用任务
 /token_status - 检查凭证状态
-/update_token - 更新YouTube授权
+/update_token - 生成 YouTube 授权链接
+/auth <授权码> - 用授权码完成 YouTube 授权
+/notify_test [all|telegram|feishu] - 测试通知连通性
 /help - 显示帮助信息"""
     
     elif command == "status":
@@ -93,6 +128,12 @@ def handle_command(command: str, args: list[str], chat_id: str) -> str:
     
     elif command == "update_token":
         return handle_update_token_command()
+
+    elif command in ("auth", "token_code"):
+        return handle_auth_code_command(args)
+
+    elif command in ("notify_test", "notify"):
+        return handle_notify_test_command(args)
     
     else:
         return f"未知命令: /{command}\n使用 /help 查看可用命令"
@@ -291,7 +332,7 @@ def get_token_status_message() -> str:
 
 
 def handle_update_token_command() -> str:
-    """处理更新token命令"""
+    """处理更新 token 命令，生成授权链接。"""
     try:
         from src.core import XHSToYouTube
         
@@ -312,7 +353,7 @@ def handle_update_token_command() -> str:
 2️⃣ 登录您的Google账号
 3️⃣ 允许应用访问权限
 4️⃣ 复制页面显示的授权码
-5️⃣ 运行: `xhs2yt update --token` 并输入授权码
+5️⃣ 在 Telegram 里发送: `/auth <授权码>`
 
 💡 *提示:*
 • 如果链接无法点击，请复制到浏览器打开
@@ -323,6 +364,60 @@ def handle_update_token_command() -> str:
         
     except Exception as e:
         return f"❌ 更新授权失败: {e}\n请检查网络连接和配置文件。"
+
+
+def handle_auth_code_command(args: list[str]) -> str:
+    """处理授权码提交命令。"""
+    if not args:
+        return "❌ 请提供授权码\n用法: /auth <授权码>"
+
+    auth_code = args[0].strip()
+    if not auth_code:
+        return "❌ 授权码不能为空\n用法: /auth <授权码>"
+
+    try:
+        from src.core import XHSToYouTube
+
+        tool = XHSToYouTube()
+        success, message = tool.authorize_youtube_with_code(auth_code)
+        if success:
+            return (
+                "✅ *YouTube 授权完成*\n\n"
+                f"{message}\n\n"
+                "你现在可以使用 /token_status 检查凭证状态。"
+            )
+        return f"❌ 授权失败: {message}"
+    except Exception as e:
+        return f"❌ 授权流程异常: {e}"
+
+
+def handle_notify_test_command(args: list[str]) -> str:
+    """处理通知连通性测试命令。"""
+    channel = args[0].lower() if args else "all"
+    if channel not in {"all", "telegram", "feishu"}:
+        return "❌ 通道参数错误\n用法: /notify_test [all|telegram|feishu]"
+
+    try:
+        from src.notification import test_notification_delivery
+
+        result = test_notification_delivery(
+            message="TG Bot 通知自检：如果你看到这条消息，说明通知链路正常。",
+            channel=channel,
+        )
+
+        lines = [
+            "📡 *通知自检结果*",
+            "",
+            f"测试通道: {result['channel']}",
+            f"总体结果: {'成功' if result['success'] else '失败'}",
+            f"说明: {result.get('message', '无')}",
+            "",
+            f"Telegram: {result['telegram']['message'] or '未测试'}",
+            f"飞书: {result['feishu']['message'] or '未测试'}",
+        ]
+        return "\n".join(lines)
+    except Exception as e:
+        return f"❌ 通知自检失败: {e}"
 
 
 def run_bot():
@@ -336,6 +431,11 @@ def run_bot():
     print(f"Bot 启动中...")
     print(f"Chat ID: {CHAT_ID}")
     print(f"轮询间隔: {POLLING_INTERVAL}秒")
+
+    if register_bot_commands():
+        print("Bot 命令菜单已更新")
+    else:
+        print("Bot 命令菜单更新失败")
     
     # 发送启动通知
     send_message("🤖 Bot 已启动\n使用 /help 查看可用命令")

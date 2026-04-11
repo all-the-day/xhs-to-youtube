@@ -188,6 +188,32 @@ def cmd_analyze(args):
         print("请确保 data 目录下有包含'表格数据.csv'的数据目录")
 
 
+def cmd_notify(args):
+    """测试通知通道连通性"""
+    from src.notification import test_notification_delivery
+
+    print("\n" + "=" * 50)
+    print("通知通信测试")
+    print("=" * 50)
+
+    result = test_notification_delivery(message=args.message, channel=args.channel)
+
+    print(f"\n通知功能: {'启用' if result['enabled'] else '未启用'}")
+    print(f"测试通道: {result['channel']}")
+
+    for channel_name in ("telegram", "feishu"):
+        channel_result = result[channel_name]
+        print(f"\n[{channel_name.capitalize()}]")
+        print(f"  已配置: {'是' if channel_result['configured'] else '否'}")
+        print(f"  结果: {channel_result['message'] or '未测试'}")
+
+    print(f"\n总体结果: {'成功' if result['success'] else '失败'}")
+    if result.get("message"):
+        print(f"说明: {result['message']}")
+
+    print("\n" + "=" * 50)
+
+
 def cmd_schedule(args):
     """执行定时上传任务"""
     from src.schedule import (
@@ -301,6 +327,9 @@ def main():
     # 强制重新分析
     python -m src.cli analyze --force --verbose
 
+    # 测试通知连通性
+    python -m src.cli notify --channel telegram
+
     # 更新所有凭证
     python -m src.cli update
 
@@ -380,6 +409,21 @@ def main():
     # status 子命令
     status_parser = subparsers.add_parser("status", help="查看凭证状态")
     status_parser.set_defaults(func=cmd_status)
+
+    # notify 子命令
+    notify_parser = subparsers.add_parser("notify", help="测试 Telegram / 飞书通知连通性")
+    notify_parser.add_argument(
+        "--channel",
+        choices=["all", "telegram", "feishu"],
+        default="all",
+        help="测试指定通道 (默认: all)",
+    )
+    notify_parser.add_argument(
+        "--message",
+        default="通知通信测试",
+        help="测试消息内容",
+    )
+    notify_parser.set_defaults(func=cmd_notify)
     
     # analyze 子命令
     analyze_parser = subparsers.add_parser("analyze", help="分析地理位置数据，推荐最佳发布时间")

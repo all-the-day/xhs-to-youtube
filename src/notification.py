@@ -73,6 +73,7 @@ def send_telegram_message(
     message: str,
     level: str = "info",
     title: str | None = None,
+    parse_mode: str | None = "Markdown",
 ) -> bool:
     """发送 Telegram 消息
     
@@ -113,8 +114,9 @@ def send_telegram_message(
     payload = {
         "chat_id": chat_id,
         "text": text,
-        "parse_mode": "Markdown",
     }
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
     
     proxy_url = get_proxy_url()
     proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
@@ -213,6 +215,99 @@ def send_feishu_message(
         return response.status_code == 200
     except Exception:
         return False
+
+
+def test_notification_delivery(
+    message: str = "通知通信测试",
+    channel: str = "all",
+) -> dict[str, Any]:
+    """测试通知通道连通性。
+
+    Args:
+        message: 发送的测试消息内容
+        channel: 目标通道，支持 all/telegram/feishu
+
+    Returns:
+        包含配置检查和发送结果的字典
+    """
+    config = load_schedule_config()
+    notification_config = config.get("notification", {})
+    enabled = notification_config.get("enabled", False)
+
+    result: dict[str, Any] = {
+        "enabled": enabled,
+        "channel": channel,
+        "success": False,
+        "telegram": {
+            "configured": False,
+            "success": False,
+            "message": "",
+        },
+        "feishu": {
+            "configured": False,
+            "success": False,
+            "message": "",
+        },
+    }
+
+    if not enabled:
+        result["message"] = "通知功能未启用"
+        return result
+
+    target_all = channel == "all"
+    target_telegram = target_all or channel == "telegram"
+    target_feishu = target_all or channel == "feishu"
+
+    tg_token = notification_config.get("telegram_token", "")
+    tg_chat_id = notification_config.get("telegram_chat_id", "")
+    if target_telegram:
+        result["telegram"]["configured"] = bool(tg_token and tg_chat_id)
+        if result["telegram"]["configured"]:
+            result["telegram"]["success"] = send_telegram_message(
+                tg_token,
+                tg_chat_id,
+                message,
+                "info",
+                "通知通信测试",
+            )
+            result["telegram"]["message"] = (
+                "Telegram 发送成功" if result["telegram"]["success"] else "Telegram 发送失败"
+            )
+        else:
+            result["telegram"]["message"] = "Telegram 未配置完整"
+
+    webhook = notification_config.get("feishu_webhook", "")
+    if target_feishu:
+        result["feishu"]["configured"] = bool(webhook)
+        if result["feishu"]["configured"]:
+            result["feishu"]["success"] = send_feishu_message(
+                webhook,
+                message,
+                "info",
+                "通知通信测试",
+            )
+            result["feishu"]["message"] = (
+                "飞书发送成功" if result["feishu"]["success"] else "飞书发送失败"
+            )
+        else:
+            result["feishu"]["message"] = "飞书未配置"
+
+    result["success"] = any(
+        [
+            result["telegram"]["success"],
+            result["feishu"]["success"],
+        ]
+    )
+
+    if not result["success"]:
+        if target_all and not result["telegram"]["configured"] and not result["feishu"]["configured"]:
+            result["message"] = "没有可用的通知通道"
+        else:
+            result["message"] = "通知发送失败"
+    else:
+        result["message"] = "通知发送成功"
+
+    return result
 
 
 def notify_upload_result(

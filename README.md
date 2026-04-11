@@ -18,6 +18,7 @@ python -m src.cli -i
 - `python -m src.cli fetch <profile-url>` 抓取用户主页视频列表
 - `python -m src.cli batch --input data/video_list.json` 批量搬运
 - `python -m src.cli analyze` 分析受众数据并推荐发布时间
+- `python -m src.cli notify --channel telegram` 测试 Telegram 通知连通性
 - `python -m src.bot` 启动 Telegram Bot
 
 ## 配置文件
@@ -26,6 +27,38 @@ python -m src.cli -i
 - `cookies.txt` 存放小红书 Cookie
 - `credentials.json` 存放 Google OAuth 客户端凭证
 - `token.json` 存放首次授权后生成的 YouTube Token
+
+示例调度配置默认提供 3 个任务：
+
+```json
+{
+  "schedule": {
+    "tasks": [
+      {"time": "08:00", "limit": 3, "enabled": true, "description": "早间上传"},
+      {"time": "12:00", "limit": 3, "enabled": true, "description": "午间上传"},
+      {"time": "20:00", "limit": 4, "enabled": true, "description": "晚间上传"}
+    ]
+  }
+}
+```
+
+## Telegram Bot
+
+Bot 当前支持这些命令：
+
+- `/status` 查看今日上传状态
+- `/tasks` 查看定时任务列表
+- `/run [时间] [数量]` 手动触发上传
+- `/update_token` 生成 YouTube 授权链接
+- `/auth <授权码>` 用授权码完成 YouTube 授权
+- `/token_status` 检查凭证状态
+- `/notify_test [all|telegram|feishu]` 测试通知连通性
+
+如果你只想测试通知链路，可以直接运行：
+
+```bash
+python -m src.cli notify --channel telegram
+```
 
 ## 测试
 
