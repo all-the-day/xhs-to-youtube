@@ -36,14 +36,17 @@ test_fetch_result.json
 
 # 开发上下文
 .dev_context/
+.codex
 
 # 临时文件
 *.xlsx
 *.xlsx:Zone.Identifier
 header.txt
 
+# Python 打包产物
+*.egg-info/
+
 # 凭证文件（敏感信息）
 cookies.txt
 credentials.json
 token.json
-

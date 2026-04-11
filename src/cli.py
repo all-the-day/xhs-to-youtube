@@ -143,8 +143,8 @@ def cmd_status(args):
             expiry = token_data.get('expiry', '')
             if expiry:
                 print(f"\n[Token 过期时间] {expiry}")
-        except:
-            pass
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"\n[警告] 无法读取 Token 过期时间: {e}")
     
     print("\n" + "=" * 50)
 
