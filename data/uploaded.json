@@ -61,13 +61,13 @@
       "uploaded_at": "2026-03-04 19:13:37"
     },
     "599bcce65e87e740f308ae78": {
-      "youtube_id": "BZ29IGd4asA",
-      "youtube_url": "https://www.youtube.com/watch?v=BZ29IGd4asA",
-      "title": "Diligent gnawing",
-      "uploaded_at": "2026-04-11 13:53:38",
-      "upload_hour": 13,
-      "time_slot": "非推荐时段",
-      "recommendation_followed": false
+      "youtube_id": "EC-yEdZV5BU",
+      "youtube_url": "https://www.youtube.com/watch?v=EC-yEdZV5BU",
+      "title": "Fierce Chicks",
+      "uploaded_at": "2026-04-11 20:01:23",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
     },
     "67c2aaa200000000290264bd": {
       "youtube_id": "",
@@ -1040,6 +1040,39 @@
       "upload_hour": 13,
       "time_slot": "非推荐时段",
       "recommendation_followed": false
+    },
+    "6890085c000000002501163c": {
+      "youtube_id": "EC-yEdZV5BU",
+      "youtube_url": "https://www.youtube.com/watch?v=EC-yEdZV5BU",
+      "title": "Fierce Chicks",
+      "uploaded_at": "2026-04-11 20:01:23",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "6803519d000000001c011317": {
+      "youtube_id": "",
+      "youtube_url": "",
+      "title": "幸福小鸡然而我哭唧唧",
+      "uploaded_at": "2026-04-11 21:15:24",
+      "status": "failed",
+      "error": "未找到视频链接，可能是图文笔记或已删除"
+    },
+    "682bd597000000002300124b": {
+      "youtube_id": "",
+      "youtube_url": "",
+      "title": "尾巴又被它妈剪了",
+      "uploaded_at": "2026-04-11 21:15:24",
+      "status": "failed",
+      "error": "未找到视频链接，可能是图文笔记或已删除"
+    },
+    "68494b60000000002202abcd": {
+      "youtube_id": "",
+      "youtube_url": "",
+      "title": "听说鹦鹉也可以抽象……？",
+      "uploaded_at": "2026-04-11 21:15:24",
+      "status": "failed",
+      "error": "未找到视频链接，可能是图文笔记或已删除"
     }
   }
 }

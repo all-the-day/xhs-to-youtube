@@ -72,20 +72,30 @@ def log_execution(
     """
     time_str = task.get("time", "unknown")
     limit = task.get("limit", 0)
+    success_count = result.get("success_count", 0)
+    skipped = result.get("skipped", 0)
+    failed = result.get("failed", 0)
     
     if error:
+        # 有异常抛出
         logger.error(f"[{time_str}] 任务执行失败: {error}")
-    elif result.get("success"):
-        success_count = result.get("success_count", 0)
-        skipped = result.get("skipped", 0)
-        failed = result.get("failed", 0)
+    elif failed == 0:
+        # 完全成功
         logger.info(
             f"[{time_str}] 任务执行成功 - "
             f"计划: {limit}, 成功: {success_count}, 跳过: {skipped}, 失败: {failed}"
         )
+    elif success_count > 0:
+        # 部分成功
+        logger.info(
+            f"[{time_str}] 任务执行完成（部分成功）- "
+            f"计划: {limit}, 成功: {success_count}, 跳过: {skipped}, 失败: {failed}"
+        )
     else:
+        # 完全失败（无成功上传）
         logger.warning(
-            f"[{time_str}] 任务执行异常 - {result.get('message', '未知错误')}"
+            f"[{time_str}] 任务执行失败 - "
+            f"计划: {limit}, 成功: {success_count}, 跳过: {skipped}, 失败: {failed}"
         )
 
 
