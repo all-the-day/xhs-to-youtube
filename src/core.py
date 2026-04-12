@@ -21,6 +21,7 @@ from src.translate import TranslateService
 from src.download import VideoDownloader
 from src.upload import YouTubeUploader
 from src.fetch import VideoFetcher
+from src.spiritual_content import SpiritualContentClient
 
 
 class XHSToYouTube:
@@ -42,6 +43,7 @@ class XHSToYouTube:
         self.downloader = VideoDownloader(log_callback, progress_callback)
         self.uploader = YouTubeUploader(log_callback, progress_callback)
         self.fetcher = VideoFetcher(log_callback, progress_callback)
+        self.spiritual_content = SpiritualContentClient(log_callback)
 
     def _log(self, message: str):
         if self.log_callback:
@@ -224,6 +226,23 @@ class XHSToYouTube:
                 lines.append(translated_desc)
             else:
                 lines.append(original_desc)
+            lines.append("")
+
+        spiritual = self.spiritual_content.compose(
+            text=original_desc or "",
+            tags=[],
+            context=source_url or uploader or "",
+            length=4,
+        )
+        if spiritual and spiritual.lines:
+            lines.append("属灵短句")
+            if spiritual.short_title:
+                lines.append(f"- {spiritual.short_title}")
+            for line in spiritual.lines:
+                lines.append(f"- {line}")
+            if spiritual.references:
+                refs = "；".join(spiritual.references[:2])
+                lines.append(f"参考：{refs}")
             lines.append("")
 
         lines.append("原创" if not translate else "Original Content")

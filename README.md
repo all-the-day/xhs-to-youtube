@@ -27,6 +27,21 @@ python -m src.cli -i
 - `cookies.txt` 存放小红书 Cookie
 - `credentials.json` 存放 Google OAuth 客户端凭证
 - `token.json` 存放首次授权后生成的 YouTube Token
+- `spiritual_content` 可选配置用于联调 `readBiblecontext`，默认关闭
+
+示例配置：
+
+```json
+{
+  "spiritual_content": {
+    "enabled": false,
+    "api_url": "http://127.0.0.1:8080",
+    "api_key": "",
+    "timeout": 15,
+    "style": "normal"
+  }
+}
+```
 
 示例调度配置默认提供 3 个任务：
 
