@@ -28,6 +28,7 @@ python -m src.cli -i
 - `credentials.json` 存放 Google OAuth 客户端凭证
 - `token.json` 存放首次授权后生成的 YouTube Token
 - `spiritual_content` 可选配置用于联调 `readBiblecontext`，默认关闭
+- 部署和交接说明见 [docs/deploy-handoff.md](docs/deploy-handoff.md)
 
 示例配置：
 
