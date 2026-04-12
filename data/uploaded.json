@@ -61,10 +61,10 @@
       "uploaded_at": "2026-03-04 19:13:37"
     },
     "599bcce65e87e740f308ae78": {
-      "youtube_id": "EC-yEdZV5BU",
-      "youtube_url": "https://www.youtube.com/watch?v=EC-yEdZV5BU",
-      "title": "Fierce Chicks",
-      "uploaded_at": "2026-04-11 20:01:23",
+      "youtube_id": "6jpcsHx93ig",
+      "youtube_url": "https://www.youtube.com/watch?v=6jpcsHx93ig",
+      "title": "Touch carefully",
+      "uploaded_at": "2026-04-12 20:00:28",
       "upload_hour": 20,
       "time_slot": "黄金时段",
       "recommendation_followed": true
@@ -1073,6 +1073,33 @@
       "uploaded_at": "2026-04-11 21:15:24",
       "status": "failed",
       "error": "未找到视频链接，可能是图文笔记或已删除"
+    },
+    "689022ec000000002500e377": {
+      "youtube_id": "KCQe7U9OaPc",
+      "youtube_url": "https://www.youtube.com/watch?v=KCQe7U9OaPc",
+      "title": "Chicks love their own feathers too",
+      "uploaded_at": "2026-04-12 08:00:30",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "689045e500000000250208e7": {
+      "youtube_id": "-8T5lbayzWo",
+      "youtube_url": "https://www.youtube.com/watch?v=-8T5lbayzWo",
+      "title": "This is a bad bird, no one will play with me",
+      "uploaded_at": "2026-04-12 12:00:32",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "68915d740000000025028a78": {
+      "youtube_id": "6jpcsHx93ig",
+      "youtube_url": "https://www.youtube.com/watch?v=6jpcsHx93ig",
+      "title": "Touch carefully",
+      "uploaded_at": "2026-04-12 20:00:28",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
     }
   }
 }
