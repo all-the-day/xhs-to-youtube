@@ -210,6 +210,27 @@ class XHSToYouTube:
 
         return chinese_title
 
+    def _build_default_description(self, original_desc: str, translate: bool = False) -> str:
+        lines = []
+
+        if original_desc:
+            lines.append(original_desc)
+            lines.append("")
+
+        lines.append("原创" if not translate else "Original Content")
+        return "\n".join(lines)
+
+    def _build_spiritual_description(self, spiritual, english: bool = False) -> str:
+        lines = ["Spiritual Lines" if english else "属灵短句"]
+        if spiritual.short_title:
+            lines.append(spiritual.short_title)
+        for line in spiritual.lines:
+            lines.append(f"- {line}")
+        if spiritual.references:
+            refs = "；".join(spiritual.references[:2])
+            lines.append(f"{'References' if english else '参考'}：{refs}")
+        return "\n".join(lines).strip()
+
     def generate_description(
         self,
         original_desc: str,
@@ -218,36 +239,41 @@ class XHSToYouTube:
         translate: bool = False
     ) -> str:
         """生成视频描述"""
-        lines = []
+        context = source_url or uploader or ""
+        spiritual = None
+        if translate:
+            spiritual = self.spiritual_content.compose(
+                text=original_desc or "",
+                tags=[],
+                context=context,
+                length=4,
+                target_lang="en",
+            )
+        if spiritual is None:
+            spiritual = self.spiritual_content.compose(
+                text=original_desc or "",
+                tags=[],
+                context=context,
+                length=4,
+            )
 
-        if original_desc:
-            if translate:
-                translated_desc = self.translate(original_desc, "description")
-                lines.append(translated_desc)
-            else:
-                lines.append(original_desc)
-            lines.append("")
+        if translate and spiritual and spiritual.lines:
+            spiritual_desc = self._build_spiritual_description(spiritual, english=True)
+            if spiritual_desc:
+                return spiritual_desc
 
-        spiritual = self.spiritual_content.compose(
-            text=original_desc or "",
-            tags=[],
-            context=source_url or uploader or "",
-            length=4,
-        )
+        base_description = self._build_default_description(original_desc, translate=False)
         if spiritual and spiritual.lines:
-            lines.append("属灵短句")
-            if spiritual.short_title:
-                lines.append(f"- {spiritual.short_title}")
-            for line in spiritual.lines:
-                lines.append(f"- {line}")
-            if spiritual.references:
-                refs = "；".join(spiritual.references[:2])
-                lines.append(f"参考：{refs}")
-            lines.append("")
+            spiritual_desc = self._build_spiritual_description(spiritual)
+            if spiritual_desc:
+                base_description = spiritual_desc
 
-        lines.append("原创" if not translate else "Original Content")
+        if translate:
+            translated = self.translate(base_description, "description")
+            if translated and translated.strip():
+                return translated
 
-        return "\n".join(lines)
+        return base_description if base_description else self._build_default_description(original_desc, translate=translate)
 
     # ==================== 单视频搬运 ====================
 

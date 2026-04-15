@@ -50,7 +50,14 @@ class SpiritualContentClient:
         settings = self._get_settings()
         return bool(settings.get("enabled", False) and settings.get("api_url"))
 
-    def compose(self, text: str, tags: list[str] | None = None, context: str | None = None, length: int = 4) -> SpiritualContentResult | None:
+    def compose(
+        self,
+        text: str,
+        tags: list[str] | None = None,
+        context: str | None = None,
+        length: int = 4,
+        target_lang: str = "zh",
+    ) -> SpiritualContentResult | None:
         settings = self._get_settings()
         if not settings.get("enabled", False):
             return None
@@ -66,6 +73,7 @@ class SpiritualContentClient:
             "length": length,
             "include_references": True,
             "style": settings.get("style", "normal"),
+            "target_lang": target_lang,
         }
 
         headers = {"Content-Type": "application/json"}
@@ -99,4 +107,3 @@ class SpiritualContentClient:
         except Exception as e:
             self._log(f"[灵粮] 调用 readBiblecontext 失败: {e}")
             return None
-

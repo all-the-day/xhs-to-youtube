@@ -20,6 +20,7 @@ class TranslateError(Exception):
 class TranslateService:
     """翻译服务类"""
 
+    TRANSLATION_API_DEFAULT_TIMEOUT = 15
     # MyMemory API 配置
     MYMEMORY_API_URL = "https://api.mymemory.translated.net/get"
     MYMEMORY_DAILY_LIMIT = 5000  # 每日字符限额
@@ -81,6 +82,58 @@ class TranslateService:
         
         return text
 
+    def _looks_english(self, text: str) -> bool:
+        return bool(text and not any("\u4e00" <= ch <= "\u9fff" for ch in text))
+
+    def _translate_via_api(
+        self,
+        text: str,
+        target_type: str = "title",
+        timeout: int | None = None,
+    ) -> str | None:
+        config = self._load_config()
+        api_settings = config.get("translation_api", {}) or {}
+        if not api_settings.get("enabled", False):
+            return None
+
+        api_url = str(api_settings.get("api_url", "")).rstrip("/")
+        if not api_url:
+            return None
+
+        payload = {
+            "text": text,
+            "source_lang": api_settings.get("source_lang", "zh-CN"),
+            "target_lang": api_settings.get("target_lang", "en"),
+            "mode": api_settings.get("mode", "spiritual" if target_type == "description" else "general"),
+            "preserve_lines": api_settings.get("preserve_lines", True),
+        }
+        headers = {"Content-Type": "application/json"}
+        api_key = api_settings.get("api_key", "")
+        if api_key:
+            headers["X-API-Key"] = api_key
+
+        timeout = timeout or api_settings.get("timeout", self.TRANSLATION_API_DEFAULT_TIMEOUT)
+        try:
+            response = requests.post(
+                f"{api_url}/translate",
+                json=payload,
+                headers=headers,
+                timeout=timeout,
+            )
+            response.raise_for_status()
+            data = response.json()
+            if not data.get("ok"):
+                self._log(f"[翻译] 译文 API 返回失败: {data}")
+                return None
+            content = data.get("data", {}) or {}
+            translated = content.get("translated_text", "") or ""
+            if translated and translated != text:
+                self._log(f"[翻译] 使用 API 译文，模式={payload['mode']}")
+                return translated
+        except Exception as e:
+            self._log(f"[翻译] 译文 API 调用失败: {e}")
+        return None
+
     def translate(
         self,
         text: str,
@@ -105,9 +158,12 @@ class TranslateService:
 
         config = self._load_config()
         proxies = config.get('proxies')
-        
         max_retries = max_retries or self.DEFAULT_MAX_RETRIES
         timeout = timeout or self.DEFAULT_TIMEOUT
+
+        api_translated = self._translate_via_api(text, target_type=target_type, timeout=timeout)
+        if api_translated:
+            return api_translated
 
         last_error = None
         for attempt in range(max_retries):
@@ -141,7 +197,7 @@ class TranslateService:
 
                 if result.get("responseStatus") == 200 and result.get("responseData"):
                     translated = result["responseData"].get("translatedText", "")
-                    if translated:
+                    if translated and translated != text and self._looks_english(translated):
                         self._log(f"[翻译] {text[:20]}... -> {translated[:20]}...")
                         return translated
 

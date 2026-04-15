@@ -72,6 +72,11 @@ curl -X POST http://127.0.0.1:8080/compose \
 }
 ```
 
+说明：
+
+- 英文描述优先直接请求 `readBiblecontext /compose`，由它返回 `target_lang=en` 的英文版短句。
+- `translation_api` 只作为 fallback，不建议作为主链路。
+
 如果暂时还没有 `readBiblecontext` 地址，就保持：
 
 - `enabled: false`
@@ -96,6 +101,7 @@ python3 tests/test_spiritual_content.py
 - `lines` 是否过长
 - `references` 是否优先 Bible
 - `joy / peace / comfort` 是否还带出太重的信息腔
+- `translation_api` 是否只在英文版不可用时兜底
 
 ## 后续 agent 的执行顺序
 
