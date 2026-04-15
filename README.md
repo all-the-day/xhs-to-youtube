@@ -30,6 +30,7 @@ python -m src.cli -i
 - `spiritual_content` 可选配置用于联调 `readBiblecontext`，默认关闭
 - `translation_api` 可选配置仅用于兜底翻译，默认关闭；主链路优先直接使用 `readBiblecontext /compose` 的英文版输出
 - 部署和交接说明见 [docs/deploy-handoff.md](docs/deploy-handoff.md)
+- 服务器执行版说明见 [docs/server-execution.md](docs/server-execution.md)
 
 示例配置：
 
