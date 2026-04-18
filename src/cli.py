@@ -57,8 +57,8 @@ def cmd_fetch(args):
 
 def cmd_batch(args):
     """执行批量搬运"""
-    # 默认开启翻译，除非指定 --no-translate
-    translate = not args.no_translate or args.translate_title or args.translate_desc
+    # 默认只做中文搬运；只有显式翻译参数才进入英文链路
+    translate = (args.translate_title or args.translate_desc) and not args.no_translate
     from src.notification import notify_upload_result
     from pathlib import Path
 
@@ -395,7 +395,7 @@ def main():
     batch_parser.add_argument("--force", action="store_true",
                        help="强制重新上传（不跳过已上传视频）")
     batch_parser.add_argument("--no-translate", action="store_true",
-                       help="禁用自动翻译（默认开启翻译）")
+                       help="禁用自动翻译（默认不翻译）")
     batch_parser.add_argument("--translate-title", action="store_true",
                        help="仅翻译标题")
     batch_parser.add_argument("--translate-desc", action="store_true",

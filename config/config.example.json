@@ -7,16 +7,6 @@
     "timeout": 15,
     "style": "normal"
   },
-  "translation_api": {
-    "enabled": false,
-    "api_url": "http://127.0.0.1:8080",
-    "api_key": "",
-    "timeout": 15,
-    "source_lang": "zh-CN",
-    "target_lang": "en",
-    "mode": "spiritual",
-    "preserve_lines": true
-  },
   "schedule": {
     "tasks": [
       {"time": "08:00", "limit": 3, "enabled": true, "description": "早间上传"},

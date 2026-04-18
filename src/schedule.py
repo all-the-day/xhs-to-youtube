@@ -151,7 +151,7 @@ def run_scheduled_upload(
     try:
         result = tool.batch_transfer(
             limit=upload_limit,
-            translate=True,
+            translate=False,
             show_time_suggestion=False,  # 定时任务不需要时间确认
         )
         

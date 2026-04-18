@@ -3,8 +3,7 @@
 这份文档只保留服务器上直接执行的顺序，目标是：
 
 - 先拉起 `readBiblecontext`
-- 再让 `xhs-to-youtube` 直接消费它的英文/中文属灵内容
-- `translation_api` 只做 fallback，不作为主链路
+- 再让 `xhs-to-youtube` 直接消费它的中文属灵内容
 
 ## 1. `readBiblecontext` 先起服务
 
@@ -39,10 +38,6 @@ curl -X POST http://127.0.0.1:8080/compose \
   -H 'Content-Type: application/json' \
   -H 'X-API-Key: change-me' \
   -d '{"text":"今天很喜悦","tags":["日常"],"length":4}'
-curl -X POST http://127.0.0.1:8080/compose \
-  -H 'Content-Type: application/json' \
-  -H 'X-API-Key: change-me' \
-  -d '{"text":"today I feel tired but want peace","tags":["daily"],"length":4,"target_lang":"en"}'
 ```
 
 ## 2. `xhs-to-youtube` 再接入
@@ -57,17 +52,13 @@ curl -X POST http://127.0.0.1:8080/compose \
     "api_key": "",
     "timeout": 15,
     "style": "normal"
-  },
-  "translation_api": {
-    "enabled": false
   }
 }
 ```
 
 说明：
 
-- 英文描述优先直接拿 `readBiblecontext /compose` 的 `target_lang=en` 输出。
-- `translation_api` 只在英文版不可用时兜底。
+- 只保留中文属灵内容，不再默认启用英文翻译链路。
 
 联调命令：
 
@@ -89,12 +80,12 @@ python3 tests/test_spiritual_content.py
 - `short_title` 是否自然
 - `lines` 是否过长
 - `references` 是否优先 Bible
-- 英文版是否直接来自 `readBiblecontext`
+- 中文内容是否简洁、自然、适合中午发布
 
 ## 4. 后续 agent 顺序
 
 1. 确认 `readBiblecontext /health` 正常。
-2. 确认 `verse` 和 `compose` 中英文都正常。
+2. 确认 `verse` 和 `compose` 中文都正常。
 3. 打开 `xhs-to-youtube` 的 `spiritual_content.enabled=true`。
 4. 先跑 `tests/test_spiritual_content.py`。
 5. 再用真实视频标题和描述测 `generate_description()`。
@@ -102,7 +93,6 @@ python3 tests/test_spiritual_content.py
 
 ## 5. 约束
 
-- `xhs-to-youtube` 不再自己翻译属灵短句正文。
-- 经文英文版直接用 `bible_kjv.db`。
-- `translation_api` 只保留为 fallback。
+- `xhs-to-youtube` 不再默认走翻译链路。
+- 先把中文中午内容跑稳。
 - 先跑通服务，再调风格。

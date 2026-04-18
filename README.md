@@ -1,6 +1,6 @@
 # xhs-to-youtube
 
-小红书视频搬运到 YouTube 的自动化工具。项目提供命令行、批量处理、定时任务和 Telegram Bot 控制入口，适合做视频抓取、翻译、上传和调度。
+小红书视频搬运到 YouTube 的自动化工具。项目提供命令行、批量处理、定时任务和 Telegram Bot 控制入口，适合做视频抓取、上传和调度。
 
 ## 快速开始
 
@@ -28,7 +28,6 @@ python -m src.cli -i
 - `credentials.json` 存放 Google OAuth 客户端凭证
 - `token.json` 存放首次授权后生成的 YouTube Token
 - `spiritual_content` 可选配置用于联调 `readBiblecontext`，默认关闭
-- `translation_api` 可选配置仅用于兜底翻译，默认关闭；主链路优先直接使用 `readBiblecontext /compose` 的英文版输出
 - 部署和交接说明见 [docs/deploy-handoff.md](docs/deploy-handoff.md)
 - 服务器执行版说明见 [docs/server-execution.md](docs/server-execution.md)
 
@@ -42,24 +41,9 @@ python -m src.cli -i
     "api_key": "",
     "timeout": 15,
     "style": "normal"
-  },
-  "translation_api": {
-    "enabled": false,
-    "api_url": "http://127.0.0.1:8080",
-    "api_key": "",
-    "timeout": 15,
-    "source_lang": "zh-CN",
-    "target_lang": "en",
-    "mode": "spiritual",
-    "preserve_lines": true
   }
 }
 ```
-
-说明：
-
-- 英文描述优先直接请求 `readBiblecontext /compose`，由它返回英文版短句。
-- `translation_api` 只在英文版不可用时作为 fallback，不建议作为主翻译链路。
 
 示例调度配置默认提供 3 个任务：
 
