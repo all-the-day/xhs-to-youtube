@@ -467,6 +467,52 @@ def test_batch_transfer_marks_failure_as_failed(monkeypatch, tmp_path):
     assert result["failed_videos"][0]["error"] == "token expired"
 
 
+def test_batch_transfer_filters_uploaded_videos_before_processing(monkeypatch, tmp_path):
+    """测试批量上传会先过滤已上传视频，再处理剩余队列。"""
+    import src.core as core_module
+
+    video_list = tmp_path / "videos.json"
+    video_list.write_text(
+        """
+        {
+          "videos": [
+            {"note_id": "n1", "title": "视频1", "desc": "desc", "url": "https://example.com/1"},
+            {"note_id": "n2", "title": "视频2", "desc": "desc", "url": "https://example.com/2"},
+            {"note_id": "n3", "title": "视频3", "desc": "desc", "url": "https://example.com/3"}
+          ]
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    tool = core_module.XHSToYouTube()
+    monkeypatch.setattr(tool, "check_upload_limit", lambda: {"limit": 10, "used": 0, "remaining": 10})
+    monkeypatch.setattr(
+        tool,
+        "_load_uploaded_records",
+        lambda: {
+            "n1": {"youtube_url": "https://youtube.com/watch?v=1"},
+            "n2": {"youtube_url": "https://youtube.com/watch?v=2"},
+        },
+    )
+
+    transfer_calls = []
+
+    def fake_transfer(**kwargs):
+        transfer_calls.append(kwargs)
+        return {"video_id": "abc123", "video_url": "https://youtube.com/watch?v=abc123", "title": kwargs["title"]}
+
+    monkeypatch.setattr(tool, "transfer", fake_transfer)
+
+    result = tool.batch_transfer(video_list_path=str(video_list), limit=1, show_time_suggestion=False)
+
+    assert result["success"] is True
+    assert result["skipped"] == 2
+    assert result["success_count"] == 1
+    assert len(transfer_calls) == 1
+    assert transfer_calls[0]["xhs_url"] == "https://example.com/3"
+
+
 def test_cmd_batch_sends_notification_on_failure(monkeypatch):
     """测试 batch 命令会把失败结果送入通知层。"""
     import src.cli as cli_module

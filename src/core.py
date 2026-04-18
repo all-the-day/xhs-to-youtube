@@ -535,23 +535,41 @@ class XHSToYouTube:
                 'failed': 0
             }
 
-        # 4. 加载已上传记录
+        # 4. 加载已上传记录并预过滤待处理队列
         uploaded_records = self._load_uploaded_records() if skip_uploaded else {}
+        pending_videos = videos
+        skipped_existing = 0
+
         if uploaded_records:
             self._log(f"[批量] 已有 {len(uploaded_records)} 个上传记录")
+
+        if skip_uploaded and uploaded_records:
+            pending_videos = []
+            for video in videos:
+                note_id = video.get('note_id', '')
+                if note_id and note_id in uploaded_records:
+                    skipped_existing += 1
+                    continue
+                pending_videos.append(video)
+
+            if skipped_existing:
+                self._log(
+                    f"[批量] 已过滤 {skipped_existing} 个已上传视频，"
+                    f"剩余 {len(pending_videos)} 个待处理"
+                )
 
         # 5. 统计信息
         results = {
             'success': True,
             'total': total_videos,
-            'skipped': 0,
+            'skipped': skipped_existing,
             'success_count': 0,
             'failed': 0,
             'failed_videos': []
         }
 
         # 6. 遍历处理
-        for i, video in enumerate(videos):
+        for i, video in enumerate(pending_videos):
             note_id = video.get('note_id', '')
             video_title = video.get('title', '')
             video_desc = video.get('desc', '')
@@ -559,14 +577,10 @@ class XHSToYouTube:
 
             self._log("")
             self._log("-" * 50)
-            self._log(f"[批量] 处理第 {i+1}/{total_videos} 个: {video_title or '未知标题'}")
-
-            # 检查是否已上传
-            if skip_uploaded and note_id in uploaded_records:
-                record = uploaded_records[note_id]
-                self._log(f"[跳过] 已上传过: {record.get('youtube_url', '')}")
-                results['skipped'] += 1
-                continue
+            self._log(
+                f"[批量] 处理第 {i+1}/{len(pending_videos)} 个待处理视频: "
+                f"{video_title or '未知标题'}"
+            )
 
             # 检查是否有 URL
             if not url:
