@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>xhs-to-youtube Web Console</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">xhs-to-youtube</p>
+          <h1>浏览器里直接搬运小红书视频到 YouTube</h1>
+          <p class="hero-copy">
+            这版 Web 控制台复用现有 CLI 核心逻辑，适合在服务器或桌面浏览器里做状态查看、抓取、搬运和授权操作。
+          </p>
+        </div>
+        <div class="hero-panel">
+          <div class="metric">
+            <span>今日已上传</span>
+            <strong>{{ overview.quota.used }}</strong>
+          </div>
+          <div class="metric">
+            <span>今日剩余额度</span>
+            <strong>{{ overview.quota.remaining }}</strong>
+          </div>
+          <div class="metric">
+            <span>Token 过期时间</span>
+            <strong>{{ overview.auth_info.token_expiry or '未读取到' }}</strong>
+          </div>
+          <div class="metric">
+            <span>访问控制</span>
+            <strong>{{ '已启用' if web_auth_enabled else '未启用' }}</strong>
+          </div>
+          <div class="metric">
+            <span>表单令牌</span>
+            <strong>{{ '已启用' if web_csrf_enabled else '未启用' }}</strong>
+          </div>
+        </div>
+      </header>
+
+      {% if action_result %}
+      <section class="result-panel {{ 'ok' if action_result.success else 'error' }}">
+        <div class="result-header">
+          <h2>{{ action_result.title }}</h2>
+          <span>{{ '成功' if action_result.success else '失败' }}</span>
+        </div>
+        <p>{{ action_result.summary }}</p>
+        {% if action_result.data %}
+        <pre>{{ action_result.data_pretty }}</pre>
+        {% endif %}
+        {% if action_result.logs %}
+        <details>
+          <summary>运行日志</summary>
+          <pre>{{ action_result.logs | join('\n') }}</pre>
+        </details>
+        {% endif %}
+      </section>
+      {% endif %}
+
+      <section class="card-grid top-grid">
+        <article class="card">
+          <h2>凭证状态</h2>
+          <ul class="status-list">
+            {% for status in overview.statuses %}
+            <li class="{{ 'valid' if status.valid else 'invalid' }}">
+              <div>
+                <strong>{{ status.name }}</strong>
+                <p>{{ status.message }}</p>
+              </div>
+              <code>{{ status.path }}</code>
+            </li>
+            {% endfor %}
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>调度状态</h2>
+          <p class="muted">日期 {{ overview.schedule_status.date }}，当前时间 {{ overview.schedule_status.current_time }}</p>
+          <ul class="schedule-list">
+            {% for task in overview.schedule_status.tasks %}
+            <li>
+              <strong>{{ task.time }}</strong>
+              <span>{{ task.description }}</span>
+              <em class="badge {{ task.status }}">{{ task.status }}</em>
+            </li>
+            {% endfor %}
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>最近上传记录</h2>
+          {% if overview.recent_uploads %}
+          <ul class="record-list">
+            {% for record in overview.recent_uploads %}
+            <li>
+              <div>
+                <strong>{{ record.title }}</strong>
+                <p>{{ record.uploaded_at }}</p>
+              </div>
+              <a href="{{ record.youtube_url }}" target="_blank" rel="noreferrer">打开</a>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="muted">还没有上传记录。</p>
+          {% endif %}
+        </article>
+
+        <article class="card">
+          <h2>受众分析</h2>
+          {% if overview.audience and overview.audience.recommendation %}
+          <p><strong>黄金时段：</strong>{{ overview.audience.recommendation.optimal_time }}</p>
+          <p><strong>次选时段：</strong>{{ overview.audience.recommendation.secondary_time }}</p>
+          <p class="muted">{{ overview.audience.recommendation.reason }}</p>
+          {% if overview.audience.insight %}
+          <p class="muted">
+            主力年龄 {{ overview.audience.insight.primary_age_group }}，
+            性别占比 {{ overview.audience.insight.gender_ratio }}
+          </p>
+          {% endif %}
+          {% else %}
+          <p class="muted">暂时没有可用的受众缓存。</p>
+          {% endif %}
+          <form method="post" action="/analyze/refresh" class="form-grid compact-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label><input type="checkbox" name="force" value="1">强制重新分析</label>
+            <button type="submit">刷新分析结果</button>
+          </form>
+        </article>
+      </section>
+
+      <section class="card-grid">
+        <article class="card">
+          <h2>单视频搬运</h2>
+          <form method="post" action="/transfer" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label>小红书视频 URL<input name="url" value="{{ forms.transfer.url }}" required></label>
+            <label>英文标题<input name="title_en" value="{{ forms.transfer.title_en }}"></label>
+            <label>自定义描述<textarea name="desc">{{ forms.transfer.desc }}</textarea></label>
+            <label>标签（逗号分隔）<input name="tags" value="{{ forms.transfer.tags }}"></label>
+            <label>隐私设置
+              <select name="privacy">
+                {% for value in ['public', 'unlisted', 'private'] %}
+                <option value="{{ value }}" {% if forms.transfer.privacy == value %}selected{% endif %}>{{ value }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <div class="checkbox-row">
+              <label><input type="checkbox" name="keep_video">保留本地视频</label>
+              <label><input type="checkbox" name="translate">翻译标题和描述</label>
+              <label><input type="checkbox" name="translate_title">仅翻译标题</label>
+              <label><input type="checkbox" name="translate_desc">仅翻译描述</label>
+            </div>
+            <button type="submit">开始搬运</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>抓取用户视频列表</h2>
+          <form method="post" action="/fetch" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label>用户主页 URL<input name="url" value="{{ forms.fetch.url }}" required></label>
+            <label>输出文件<input name="output" value="{{ forms.fetch.output }}"></label>
+            <label>每页数量<input name="page_size" type="number" min="1" value="{{ forms.fetch.page_size }}"></label>
+            <button type="submit">开始抓取</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>批量搬运</h2>
+          <form method="post" action="/batch" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label>视频列表文件<input name="input" value="{{ forms.batch.input }}"></label>
+            <label>最小间隔秒数<input name="interval_min" type="number" min="0" value="{{ forms.batch.interval_min }}"></label>
+            <label>最大间隔秒数<input name="interval_max" type="number" min="0" value="{{ forms.batch.interval_max }}"></label>
+            <label>上传数量限制<input name="limit" type="number" min="0" value="{{ forms.batch.limit }}"></label>
+            <label>隐私设置
+              <select name="privacy">
+                {% for value in ['public', 'unlisted', 'private'] %}
+                <option value="{{ value }}" {% if forms.batch.privacy == value %}selected{% endif %}>{{ value }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <div class="checkbox-row">
+              <label><input type="checkbox" name="keep_video">保留本地视频</label>
+              <label><input type="checkbox" name="force">不跳过已上传</label>
+              <label><input type="checkbox" name="translate_title">翻译标题</label>
+              <label><input type="checkbox" name="translate_desc">翻译描述</label>
+              <label><input type="checkbox" name="no_translate">强制不翻译</label>
+            </div>
+            <button type="submit">开始批量搬运</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>YouTube 授权</h2>
+          <div class="stack-actions">
+            <form method="post" action="/auth/url">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit">生成授权链接</button>
+            </form>
+            <form method="post" action="/auth/code" class="form-grid">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <label>授权码<input name="code" value="{{ forms.auth.code }}"></label>
+              <button type="submit">提交授权码</button>
+            </form>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>更新 Cookie</h2>
+          <form method="post" action="/cookie" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label>Cookie 内容（支持 JSON 或 Netscape 格式）
+              <textarea name="cookie_content" rows="8">{{ forms.cookie.cookie_content }}</textarea>
+            </label>
+            <button type="submit">写入 Cookie</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>执行调度任务</h2>
+          <form method="post" action="/schedule/run" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label>任务时间（HH:MM）<input name="time" value="{{ forms.schedule.time }}" placeholder="08:00"></label>
+            <label>数量限制（可留空）<input name="limit" type="number" min="1" value="{{ forms.schedule.limit }}"></label>
+            <button type="submit">执行调度</button>
+          </form>
+        </article>
+      </section>
+    </div>
+  </body>
+</html>

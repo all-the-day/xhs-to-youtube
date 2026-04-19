@@ -305,6 +305,18 @@ def cmd_schedule(args):
     print("\n" + "=" * 50)
 
 
+def cmd_web(args):
+    """启动 Web 控制台"""
+    from src.web import create_app
+
+    app = create_app()
+    app.run(
+        host=args.host,
+        port=args.port,
+        debug=args.debug,
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="小红书视频搬运到 YouTube",
@@ -456,6 +468,16 @@ def main():
     schedule_parser.add_argument("--python-path",
                        help="指定 Python 解释器路径 (用于 crontab)")
     schedule_parser.set_defaults(func=cmd_schedule)
+
+    # web 子命令
+    web_parser = subparsers.add_parser("web", help="启动 Web 控制台")
+    web_parser.add_argument("--host", default="127.0.0.1",
+                      help="监听地址 (默认: 127.0.0.1)")
+    web_parser.add_argument("--port", type=int, default=5000,
+                      help="监听端口 (默认: 5000)")
+    web_parser.add_argument("--debug", action="store_true",
+                      help="启用 Flask 调试模式")
+    web_parser.set_defaults(func=cmd_web)
     
     args = parser.parse_args()
     

@@ -15,6 +15,7 @@ dependencies = [
     "google-auth-httplib2>=0.1.0",
     "google-api-python-client>=2.0.0",
     "requests>=2.28.0",
+    "flask>=3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -37,4 +38,4 @@ where = ["."]
 include = ["src*"]
 
 [tool.setuptools.package-data]
-src = ["py.typed"]
+src = ["py.typed", "templates/*.html", "static/*.css"]

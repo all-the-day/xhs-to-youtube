@@ -53,6 +53,15 @@ DEFAULT_SCHEDULE_CONFIG = {
     },
 }
 
+DEFAULT_WEB_CONFIG = {
+    "enabled": False,
+    "username": "",
+    "password": "",
+    "csrf_enabled": False,
+    "secret_key": "",
+    "realm": "xhs-to-youtube web console",
+}
+
 
 def load_config() -> dict[str, Any]:
     """加载配置文件"""
@@ -74,6 +83,16 @@ def load_schedule_config() -> dict[str, Any]:
     result = DEFAULT_SCHEDULE_CONFIG.copy()
     result.update(schedule_config)
     
+    return result
+
+
+def load_web_config() -> dict[str, Any]:
+    """加载 Web 控制台配置"""
+    config = load_config()
+    web_config = config.get("web", {})
+
+    result = DEFAULT_WEB_CONFIG.copy()
+    result.update(web_config)
     return result
 
 

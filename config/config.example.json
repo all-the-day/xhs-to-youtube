@@ -7,6 +7,14 @@
     "timeout": 15,
     "style": "normal"
   },
+  "web": {
+    "enabled": false,
+    "username": "admin",
+    "password": "",
+    "csrf_enabled": false,
+    "secret_key": "",
+    "realm": "xhs-to-youtube web console"
+  },
   "schedule": {
     "tasks": [
       {"time": "08:00", "limit": 3, "enabled": true, "description": "早间上传"},

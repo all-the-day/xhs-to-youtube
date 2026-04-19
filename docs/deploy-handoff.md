@@ -21,6 +21,7 @@
   - 下载
   - 上传 YouTube
   - 在描述里可选插入 `readBiblecontext` 返回的属灵短句
+  - 提供 CLI 和 Web 控制台两种操作入口
 
 ## 部署顺序
 
@@ -80,6 +81,31 @@ curl -X POST http://127.0.0.1:8080/compose \
 如果暂时还没有 `readBiblecontext` 地址，就保持：
 
 - `enabled: false`
+
+### 3. 如需 Web 控制台，再做一次安全配置
+
+`xhs-to-youtube` 的 Web 控制台默认可以启动，但部署到服务器前建议先补下面配置：
+
+```json
+{
+  "web": {
+    "enabled": true,
+    "username": "admin",
+    "password": "change-me",
+    "csrf_enabled": true,
+    "secret_key": "replace-with-random-string",
+    "realm": "xhs-to-youtube web console"
+  }
+}
+```
+
+建议：
+
+- 只监听 `127.0.0.1`，再用 Nginx / Caddy / 内网访问转发
+- `web.enabled=true` 时，`web.username` 和 `web.password` 都必须配置
+- 不要把 Web 端口直接暴露到公网
+- `secret_key` 需要稳定且随机，不要频繁更换，否则会话和 CSRF 令牌会失效
+- 如果只是本地桌面访问，可以把 `web.enabled` 保持为 `false`
 
 联调检查：
 

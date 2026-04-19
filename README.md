@@ -20,6 +20,34 @@ python -m src.cli -i
 - `python -m src.cli analyze` 分析受众数据并推荐发布时间
 - `python -m src.cli notify --channel telegram` 测试 Telegram 通知连通性
 - `python -m src.bot` 启动 Telegram Bot
+- `python -m src.cli web --host 0.0.0.0 --port 5000` 启动 Web 控制台
+
+## Web 控制台
+
+Web 版复用现有核心逻辑，当前提供一版可操作的浏览器界面，覆盖：
+
+- 凭证状态与今日上传配额查看
+- 单个视频搬运
+- 用户主页视频抓取
+- 批量搬运
+- YouTube 授权链接生成与授权码提交
+- Cookie 更新
+- 调度状态查看
+
+可选访问控制：
+
+- 在 `config/config.json` 里配置 `web.enabled=true` 后，Web 控制台会启用 HTTP Basic Auth
+- `web.enabled=true` 时，`web.username` 和 `web.password` 都不能为空
+- `web.csrf_enabled=true` 时，表单会启用提交令牌校验
+- `web.secret_key` 用于签发会话和表单令牌，建议在服务器部署时设置为随机值
+
+启动方式：
+
+```bash
+python -m src.cli web --host 0.0.0.0 --port 5000
+```
+
+打开 `http://127.0.0.1:5000` 即可操作；如果部署到服务器，建议开启 `web.enabled` 并配合反向代理或内网访问控制使用。
 
 ## 配置文件
 
@@ -41,6 +69,14 @@ python -m src.cli -i
     "api_key": "",
     "timeout": 15,
     "style": "normal"
+  },
+  "web": {
+    "enabled": false,
+    "username": "admin",
+    "password": "",
+    "csrf_enabled": false,
+    "secret_key": "",
+    "realm": "xhs-to-youtube web console"
   }
 }
 ```
