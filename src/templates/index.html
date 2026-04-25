@@ -9,12 +9,18 @@
   <body>
     <div class="page-shell">
       <header class="hero">
-        <div>
+        <div class="hero-copy-block">
           <p class="eyebrow">xhs-to-youtube</p>
           <h1>浏览器里直接搬运小红书视频到 YouTube</h1>
           <p class="hero-copy">
             这版 Web 控制台复用现有 CLI 核心逻辑，适合在服务器或桌面浏览器里做状态查看、抓取、搬运和授权操作。
           </p>
+          <div class="hero-actions">
+            <a href="#overview">看状态</a>
+            <a href="#actions">去操作</a>
+            <a href="#auth">授权入口</a>
+            <a href="#schedule">调度任务</a>
+          </div>
         </div>
         <div class="hero-panel">
           <div class="metric">
@@ -59,8 +65,16 @@
       </section>
       {% endif %}
 
-      <section class="card-grid top-grid">
-        <article class="card">
+      <section class="section-block" id="overview">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">状态概览</p>
+            <h2>凭证、调度、记录和受众信息</h2>
+          </div>
+          <p class="section-note">页面打开后先看这里，能快速判断今天能不能发、凭证是否可用、缓存是否更新。</p>
+        </div>
+        <div class="card-grid card-grid--overview">
+          <article class="card">
           <h2>凭证状态</h2>
           <ul class="status-list">
             {% for status in overview.statuses %}
@@ -75,7 +89,7 @@
           </ul>
         </article>
 
-        <article class="card">
+          <article class="card">
           <h2>调度状态</h2>
           <p class="muted">日期 {{ overview.schedule_status.date }}，当前时间 {{ overview.schedule_status.current_time }}</p>
           <ul class="schedule-list">
@@ -89,7 +103,7 @@
           </ul>
         </article>
 
-        <article class="card">
+          <article class="card">
           <h2>最近上传记录</h2>
           {% if overview.recent_uploads %}
           <ul class="record-list">
@@ -108,7 +122,7 @@
           {% endif %}
         </article>
 
-        <article class="card">
+          <article class="card">
           <h2>受众分析</h2>
           {% if overview.audience and overview.audience.recommendation %}
           <p><strong>黄金时段：</strong>{{ overview.audience.recommendation.optimal_time }}</p>
@@ -129,11 +143,21 @@
             <button type="submit">刷新分析结果</button>
           </form>
         </article>
+        </div>
       </section>
 
-      <section class="card-grid">
-        <article class="card">
+      <section class="section-block" id="actions">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">操作区</p>
+            <h2>单视频、批量、授权和配置都在这里</h2>
+          </div>
+          <p class="section-note">动作卡片按功能分开，填完直接提交；结果会回写到上方的结果区。</p>
+        </div>
+        <div class="card-grid card-grid--actions">
+          <article class="card" id="transfer">
           <h2>单视频搬运</h2>
+          <p class="card-hint">输入小红书链接，选择翻译、隐私和本地保留策略。</p>
           <form method="post" action="/transfer" class="form-grid">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <label>小红书视频 URL<input name="url" value="{{ forms.transfer.url }}" required></label>
@@ -157,8 +181,9 @@
           </form>
         </article>
 
-        <article class="card">
+          <article class="card" id="fetch">
           <h2>抓取用户视频列表</h2>
+          <p class="card-hint">把主页链接抓成 JSON，后续可直接喂给批量搬运。</p>
           <form method="post" action="/fetch" class="form-grid">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <label>用户主页 URL<input name="url" value="{{ forms.fetch.url }}" required></label>
@@ -168,8 +193,9 @@
           </form>
         </article>
 
-        <article class="card">
+          <article class="card" id="batch">
           <h2>批量搬运</h2>
+          <p class="card-hint">可以指定列表文件、数量限制和翻译策略，适合定时或批处理。</p>
           <form method="post" action="/batch" class="form-grid">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <label>视频列表文件<input name="input" value="{{ forms.batch.input }}"></label>
@@ -194,8 +220,9 @@
           </form>
         </article>
 
-        <article class="card">
+          <article class="card" id="auth">
           <h2>YouTube 授权</h2>
+          <p class="card-hint">先生成授权链接，再把浏览器里的授权码粘回来。</p>
           <div class="stack-actions">
             <form method="post" action="/auth/url">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -209,8 +236,9 @@
           </div>
         </article>
 
-        <article class="card">
+          <article class="card">
           <h2>更新 Cookie</h2>
+          <p class="card-hint">支持 JSON 导出或 Netscape 格式，适合直接粘贴浏览器 Cookie。</p>
           <form method="post" action="/cookie" class="form-grid">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <label>Cookie 内容（支持 JSON 或 Netscape 格式）
@@ -220,8 +248,9 @@
           </form>
         </article>
 
-        <article class="card">
+          <article class="card" id="schedule">
           <h2>执行调度任务</h2>
+          <p class="card-hint">手动补跑某个时间点的调度任务，或者限制本次处理数量。</p>
           <form method="post" action="/schedule/run" class="form-grid">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <label>任务时间（HH:MM）<input name="time" value="{{ forms.schedule.time }}" placeholder="08:00"></label>
@@ -229,6 +258,7 @@
             <button type="submit">执行调度</button>
           </form>
         </article>
+        </div>
       </section>
     </div>
   </body>

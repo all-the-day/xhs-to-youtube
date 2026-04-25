@@ -307,7 +307,17 @@ def cmd_schedule(args):
 
 def cmd_web(args):
     """启动 Web 控制台"""
-    from src.web import create_app
+    try:
+        from src.web import create_app
+    except ModuleNotFoundError as exc:
+        if exc.name != "flask":
+            raise
+        print(
+            "启动 Web 控制台需要先安装 Flask 依赖。\n"
+            "请先在项目虚拟环境中执行：pip install -e .\n"
+            "如果你已经安装过，请确认当前使用的是同一个 Python/venv。"
+        )
+        return
 
     app = create_app()
     app.run(
