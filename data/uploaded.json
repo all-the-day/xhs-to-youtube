@@ -61,10 +61,10 @@
       "uploaded_at": "2026-03-04 19:13:37"
     },
     "599bcce65e87e740f308ae78": {
-      "youtube_id": "6jpcsHx93ig",
-      "youtube_url": "https://www.youtube.com/watch?v=6jpcsHx93ig",
-      "title": "Touch carefully",
-      "uploaded_at": "2026-04-12 20:00:28",
+      "youtube_id": "w3dAvTisRE4",
+      "youtube_url": "https://www.youtube.com/watch?v=w3dAvTisRE4",
+      "title": "睁眼就是吃",
+      "uploaded_at": "2026-04-25 20:00:11",
       "upload_hour": 20,
       "time_slot": "黄金时段",
       "recommendation_followed": true
@@ -1097,6 +1097,303 @@
       "youtube_url": "https://www.youtube.com/watch?v=6jpcsHx93ig",
       "title": "Touch carefully",
       "uploaded_at": "2026-04-12 20:00:28",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "6892acbd0000000025015d6f": {
+      "youtube_id": "nQszUDDMdd8",
+      "youtube_url": "https://www.youtube.com/watch?v=nQszUDDMdd8",
+      "title": "Walking Chicks",
+      "uploaded_at": "2026-04-13 08:00:23",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "6893fcd3000000002501ae9d": {
+      "youtube_id": "CxuVa5_d97Y",
+      "youtube_url": "https://www.youtube.com/watch?v=CxuVa5_d97Y",
+      "title": "Cute cute chick",
+      "uploaded_at": "2026-04-13 12:00:30",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "6895488a0000000025028c98": {
+      "youtube_id": "QooGJ1H3uTE",
+      "youtube_url": "https://www.youtube.com/watch?v=QooGJ1H3uTE",
+      "title": "Go, go, stop, stop.",
+      "uploaded_at": "2026-04-13 20:00:23",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "689586ba00000000250287b4": {
+      "youtube_id": "UUzLZArRfk4",
+      "youtube_url": "https://www.youtube.com/watch?v=UUzLZArRfk4",
+      "title": "battle of wits and bravery",
+      "uploaded_at": "2026-04-14 08:00:30",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "689864930000000025011a98": {
+      "youtube_id": "g__KJTQKm9s",
+      "youtube_url": "https://www.youtube.com/watch?v=g__KJTQKm9s",
+      "title": "I 🤳can't take a selfie. I can't chase and bite",
+      "uploaded_at": "2026-04-14 12:00:42",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "689984590000000025011e69": {
+      "youtube_id": "icmELW-FPZI",
+      "youtube_url": "https://www.youtube.com/watch?v=icmELW-FPZI",
+      "title": "What a funny chicken.",
+      "uploaded_at": "2026-04-14 20:00:24",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "689998e0000000002501bec4": {
+      "youtube_id": "oZY1rwK0A1s",
+      "youtube_url": "https://www.youtube.com/watch?v=oZY1rwK0A1s",
+      "title": "Chili Birds Destroy Flowers",
+      "uploaded_at": "2026-04-15 08:00:42",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "689acc700000000025011db6": {
+      "youtube_id": "fsb2js4Bh3A",
+      "youtube_url": "https://www.youtube.com/watch?v=fsb2js4Bh3A",
+      "title": "Nobody remembers me until I'm gone.",
+      "uploaded_at": "2026-04-15 12:00:42",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "689be8d6000000001d00c3a8": {
+      "youtube_id": "KUQ_roJEUtQ",
+      "youtube_url": "https://www.youtube.com/watch?v=KUQ_roJEUtQ",
+      "title": "chicken pecking rice",
+      "uploaded_at": "2026-04-15 20:00:38",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "689c20e5000000001d017b2a": {
+      "youtube_id": "Li3dWp2gTqU",
+      "youtube_url": "https://www.youtube.com/watch?v=Li3dWp2gTqU",
+      "title": "Happy chicks don't have to go to work",
+      "uploaded_at": "2026-04-16 08:00:42",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "689d3017000000001c036135": {
+      "youtube_id": "vGsHzOJiA5M",
+      "youtube_url": "https://www.youtube.com/watch?v=vGsHzOJiA5M",
+      "title": "Another dish to play with",
+      "uploaded_at": "2026-04-16 12:00:37",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "689d7997000000001d0027ac": {
+      "youtube_id": "vgAc1qoegkQ",
+      "youtube_url": "https://www.youtube.com/watch?v=vgAc1qoegkQ",
+      "title": "Crazy Dried Chicks",
+      "uploaded_at": "2026-04-17 16:18:22",
+      "upload_hour": 16,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "689e865c000000001d00b337": {
+      "youtube_id": "mPtNQpEo1ME",
+      "youtube_url": "https://www.youtube.com/watch?v=mPtNQpEo1ME",
+      "title": "I just want to sleep and ignore me.",
+      "uploaded_at": "2026-04-17 20:00:39",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "689fd365000000001d0079a0": {
+      "youtube_id": "AXImqNH_d0w",
+      "youtube_url": "https://www.youtube.com/watch?v=AXImqNH_d0w",
+      "title": "Happy Singing Chick",
+      "uploaded_at": "2026-04-18 08:05:09",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "68a27842000000001d0175d3": {
+      "youtube_id": "sj7YnMqdCDc",
+      "youtube_url": "https://www.youtube.com/watch?v=sj7YnMqdCDc",
+      "title": "Fat Dodo Chick",
+      "uploaded_at": "2026-04-18 12:03:56",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "68a3d8f9000000001d002055": {
+      "youtube_id": "fx_u-ujQlUM",
+      "youtube_url": "https://www.youtube.com/watch?v=fx_u-ujQlUM",
+      "title": "The chicken camera feels old and good",
+      "uploaded_at": "2026-04-18 20:00:41",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "68a5314f000000001d007af6": {
+      "youtube_id": "Tx1O5nEAJnM",
+      "youtube_url": "https://www.youtube.com/watch?v=Tx1O5nEAJnM",
+      "title": "wore a bewildered expression",
+      "uploaded_at": "2026-04-19 08:00:21",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "68a5773e000000001c03cc4b": {
+      "youtube_id": "BSdXgKnEbFo",
+      "youtube_url": "https://www.youtube.com/watch?v=BSdXgKnEbFo",
+      "title": "How could it be so cute?",
+      "uploaded_at": "2026-04-19 12:00:32",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "68a66e52000000001d010873": {
+      "youtube_id": "Bg1uCy0tecA",
+      "youtube_url": "https://www.youtube.com/watch?v=Bg1uCy0tecA",
+      "title": "I can't see anything moving, I have to bite everything",
+      "uploaded_at": "2026-04-19 20:00:30",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "68a7e6bb000000001c03e8b5": {
+      "youtube_id": "etUmDxS_r48",
+      "youtube_url": "https://www.youtube.com/watch?v=etUmDxS_r48",
+      "title": "Tweet, tweet, tweet.",
+      "uploaded_at": "2026-04-20 08:00:26",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "68a94b89000000001d008362": {
+      "youtube_id": "BSdTFlT9eB8",
+      "youtube_url": "https://www.youtube.com/watch?v=BSdTFlT9eB8",
+      "title": "Just chicks who want to sleep.",
+      "uploaded_at": "2026-04-20 12:00:28",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "68ad76d3000000001d0085f7": {
+      "youtube_id": "PjkDshR4eyw",
+      "youtube_url": "https://www.youtube.com/watch?v=PjkDshR4eyw",
+      "title": "Scribbled chickens",
+      "uploaded_at": "2026-04-20 20:00:32",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "68b10ad6000000001d00d308": {
+      "youtube_id": "vOF2jFnrjsk",
+      "youtube_url": "https://www.youtube.com/watch?v=vOF2jFnrjsk",
+      "title": "Crazy Chicks",
+      "uploaded_at": "2026-04-21 08:00:29",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "68b64ff4000000001c037ae6": {
+      "youtube_id": "osF0U8I7V0g",
+      "youtube_url": "https://www.youtube.com/watch?v=osF0U8I7V0g",
+      "title": "Chick: It already gives you face.",
+      "uploaded_at": "2026-04-21 12:00:28",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "68b66144000000001d010984": {
+      "youtube_id": "77rNQUCip0k",
+      "youtube_url": "https://www.youtube.com/watch?v=77rNQUCip0k",
+      "title": "Tu: This person is really annoying😤",
+      "uploaded_at": "2026-04-21 20:00:34",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "68b79e9b000000001d00b800": {
+      "youtube_id": "RmOlyHT-px4",
+      "youtube_url": "https://www.youtube.com/watch?v=RmOlyHT-px4",
+      "title": "You come with me",
+      "uploaded_at": "2026-04-22 08:00:31",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "68b8ef2f000000001d012315": {
+      "youtube_id": "Xrxp3vBpUQ8",
+      "youtube_url": "https://www.youtube.com/watch?v=Xrxp3vBpUQ8",
+      "title": "Chick Swinging",
+      "uploaded_at": "2026-04-22 12:00:42",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "68ba38e2000000001d006da7": {
+      "youtube_id": "PY-ULzwYxmQ",
+      "youtube_url": "https://www.youtube.com/watch?v=PY-ULzwYxmQ",
+      "title": "Male high spirits",
+      "uploaded_at": "2026-04-22 20:00:29",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "68ba8928000000001d0037e9": {
+      "youtube_id": "LsXhx7E7plA",
+      "youtube_url": "https://www.youtube.com/watch?v=LsXhx7E7plA",
+      "title": "Tractor rollout",
+      "uploaded_at": "2026-04-23 08:00:24",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "68bb92aa000000001c037aa5": {
+      "youtube_id": "2-EZ2VxHEho",
+      "youtube_url": "https://www.youtube.com/watch?v=2-EZ2VxHEho",
+      "title": "Chicks: Showing a meal job",
+      "uploaded_at": "2026-04-23 12:00:36",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "68be2c33000000001d017ca5": {
+      "youtube_id": "jb2lNP1WTdk",
+      "youtube_url": "https://www.youtube.com/watch?v=jb2lNP1WTdk",
+      "title": "Clever chicks also know how to press with their feet",
+      "uploaded_at": "2026-04-23 20:00:38",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "68be70ed000000001d011f40": {
+      "youtube_id": "W9LVJm3Rk74",
+      "youtube_url": "https://www.youtube.com/watch?v=W9LVJm3Rk74",
+      "title": "I'm moving bricks. It's sleeping.💤",
+      "uploaded_at": "2026-04-24 08:00:33",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "68bed380000000001c03c583": {
+      "youtube_id": "w3dAvTisRE4",
+      "youtube_url": "https://www.youtube.com/watch?v=w3dAvTisRE4",
+      "title": "睁眼就是吃",
+      "uploaded_at": "2026-04-25 20:00:11",
       "upload_hour": 20,
       "time_slot": "黄金时段",
       "recommendation_followed": true
