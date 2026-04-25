@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-将小红书视频自动搬运到 YouTube 频道的 CLI 工具，支持定时调度和远程控制。
+将小红书视频自动搬运到 YouTube 频道的 CLI 工具，支持定时调度、远程控制和属灵内容联调。
 
 当前代码已实现的核心能力：
 - 自动下载小红书视频，并优先选择无水印流
@@ -16,10 +16,13 @@
 - **定时调度上传**：支持 crontab 集成，按配置时间自动上传
 - **Telegram Bot 远程控制**：通过 Telegram 查看状态、触发上传、管理任务
 - **多渠道通知**：支持 Telegram 和飞书 Webhook 通知
+- **属灵内容联调**：与 readBiblecontext 服务联调，在视频描述中插入属灵短句
+- **二维码授权**：支持扫码授权 YouTube OAuth，方便服务器环境使用
 
 当前翻译能力说明：
 - 已实现 `MyMemory` 英文翻译
 - 读取 `config/config.json` 中的 `proxies` 配置
+- 支持 `translation_api` 配置，可通过外部 API 翻译属灵内容块
 - 未实现 DeepLX、DeepL、OpenAI 等翻译后端
 
 **版本**: 1.5.0
@@ -59,15 +62,21 @@ xhs-to-youtube/
 │   ├── schedule.py      # 定时调度模块
 │   ├── bot.py           # Telegram Bot 服务
 │   ├── notification.py  # 通知模块（Telegram/飞书）
+│   ├── spiritual_content.py  # 属灵内容客户端（readBiblecontext 联调）
 │   └── utils/
 │       ├── __init__.py
 │       └── retry.py     # 重试工具装饰器
 ├── tests/
 │   ├── __init__.py
-│   └── test_flow.py     # 测试套件
+│   ├── conftest.py      # pytest 配置（live_network marker）
+│   ├── test_flow.py     # 主流程测试套件
+│   └── test_spiritual_content.py  # 属灵内容联调测试
+├── docs/
+│   ├── deploy-handoff.md      # 部署与交接说明
+│   └── server-execution.md    # 服务器执行顺序
 ├── config/
 │   ├── config.example.json
-│   └── config.json      # 运行时配置（代理、调度、通知）
+│   └── config.json      # 运行时配置（代理、调度、通知、属灵内容）
 ├── cache/
 │   └── videos/
 ├── logs/
@@ -76,6 +85,8 @@ xhs-to-youtube/
     ├── video_list.json
     ├── uploaded.json
     ├── timezone_cache.json
+    ├── cat_videos.json        # 分类视频列表
+    ├── reupload_list.json     # 重传列表
     ├── 地理位置.../表格数据.csv
     └── 观看者年龄_观看者性别.../表格数据.csv
 ```
@@ -151,15 +162,23 @@ python -m src.cli fetch "用户主页URL" --page-size 20 -o my_videos.json
 
 ### 批量搬运上传
 
+**重要变更**：批量上传默认不翻译，只做中文搬运。只有显式指定翻译参数才会翻译。
+
 ```bash
-# 默认开启翻译
+# 默认不翻译（中文搬运）
 python -m src.cli batch
 
 # 指定输入文件
 python -m src.cli batch --input my_videos.json
 
-# 禁用翻译
-python -m src.cli batch --no-translate
+# 启用翻译（标题+描述）
+python -m src.cli batch --translate-title --translate-desc
+
+# 仅翻译标题
+python -m src.cli batch --translate-title
+
+# 仅翻译描述
+python -m src.cli batch --translate-desc
 
 # 自定义间隔时间
 python -m src.cli batch --interval-min 15 --interval-max 45
@@ -200,6 +219,20 @@ python -m src.cli analyze
 python -m src.cli analyze --force --verbose
 ```
 
+### 通知测试
+
+```bash
+# 测试所有通知通道
+python -m src.cli notify
+
+# 测试指定通道
+python -m src.cli notify --channel telegram
+python -m src.cli notify --channel feishu
+
+# 自定义测试消息
+python -m src.cli notify --message "测试通知内容"
+```
+
 ### 凭证管理
 
 ```bash
@@ -208,6 +241,14 @@ python -m src.cli update --cookie
 python -m src.cli update --token
 python -m src.cli status
 ```
+
+### OAuth 授权方式
+
+更新 Token 时支持三种授权方式：
+
+1. **扫码授权（推荐）**：终端显示二维码，手机扫码授权
+2. **图片扫码**：打开生成的 `auth_qrcode.png` 图片扫码
+3. **链接授权**：复制授权链接到浏览器完成授权
 
 ### 包装脚本
 
@@ -218,6 +259,59 @@ python -m src.cli status
 作用：
 - 调用 `python3 -m src.cli batch --limit <数量>`
 - 默认上传 5 个视频
+
+## 属灵内容功能
+
+### 功能说明
+
+属灵内容功能允许在视频描述中插入来自 `readBiblecontext` 服务的属灵短句，包括：
+- 短标题（如"安息与轻省"）
+- 属灵短句（2-4 行）
+- 圣经经文引用
+
+### 配置要求
+
+在 `config/config.json` 中配置：
+
+```json
+{
+  "spiritual_content": {
+    "enabled": true,
+    "api_url": "http://127.0.0.1:8080",
+    "api_key": "",
+    "timeout": 15,
+    "style": "normal"
+  }
+}
+```
+
+配置项说明：
+- `enabled`: 是否启用属灵内容功能
+- `api_url`: readBiblecontext 服务地址
+- `api_key`: API 密钥（可选）
+- `timeout`: 请求超时时间（秒）
+- `style`: 内容风格（normal/gentle）
+
+### 工作流程
+
+1. **中文搬运**：调用 `readBiblecontext /compose` 获取中文属灵内容
+2. **英文翻译**：如果启用翻译，会调用 `readBiblecontext /compose` 直接获取英文版属灵内容，或通过 `translation_api` 翻译
+
+### 联调测试
+
+```bash
+# 运行属灵内容联调测试
+python3 tests/test_spiritual_content.py
+```
+
+### 部署顺序
+
+详见 `docs/deploy-handoff.md` 和 `docs/server-execution.md`：
+
+1. 先部署 `readBiblecontext` 服务
+2. 确认 `/health` 和 `/compose` 接口正常
+3. 在 `xhs-to-youtube` 中启用 `spiritual_content.enabled=true`
+4. 运行联调测试
 
 ## 定时调度功能
 
@@ -230,9 +324,9 @@ python -m src.cli status
   "proxies": {},
   "schedule": {
     "tasks": [
-      {"time": "08:00", "limit": 3, "enabled": true, "description": "早间上传"},
-      {"time": "12:00", "limit": 3, "enabled": true, "description": "午间上传"},
-      {"time": "20:00", "limit": 4, "enabled": true, "description": "晚间上传"}
+      {"time": "08:00", "limit": 1, "enabled": true, "description": "早间上传"},
+      {"time": "12:00", "limit": 1, "enabled": true, "description": "午间上传"},
+      {"time": "20:00", "limit": 1, "enabled": true, "description": "晚间上传"}
     ],
     "default_limit": 3,
     "log_file": "logs/schedule.log",
@@ -263,20 +357,20 @@ python -m src.cli status
 示例 crontab 条目：
 ```cron
 # 早间上传
-0 8 * * * cd /home/iflow_space/xhs-to-youtube && python3 -m src.cli schedule --time 08:00 --limit 3 >> logs/cron.log 2>&1
+0 8 * * * cd /home/iflow_space/xhs-to-youtube && python3 -m src.cli schedule --time 08:00 --limit 1 >> logs/cron.log 2>&1
 
 # 午间上传
-0 12 * * * cd /home/iflow_space/xhs-to-youtube && python3 -m src.cli schedule --time 12:00 --limit 3 >> logs/cron.log 2>&1
+0 12 * * * cd /home/iflow_space/xhs-to-youtube && python3 -m src.cli schedule --time 12:00 --limit 1 >> logs/cron.log 2>&1
 
 # 晚间上传
-0 20 * * * cd /home/iflow_space/xhs-to-youtube && python3 -m src.cli schedule --time 20:00 --limit 4 >> logs/cron.log 2>&1
+0 20 * * * cd /home/iflow_space/xhs-to-youtube && python3 -m src.cli schedule --time 20:00 --limit 1 >> logs/cron.log 2>&1
 ```
 
 ### 调度日志
 
 调度执行日志保存在 `logs/schedule.log`，格式：
 ```
-2026-03-29 08:00:15 - INFO - [08:00] 任务执行成功 - 计划: 3, 成功: 3, 跳过: 0, 失败: 0
+2026-03-29 08:00:15 - INFO - [08:00] 任务执行成功 - 计划: 1, 成功: 1, 跳过: 0, 失败: 0
 ```
 
 ## Telegram Bot 远程控制
@@ -347,11 +441,26 @@ sudo systemctl status xhs-bot
 }
 ```
 
+### 测试通知连通性
+
+使用 `notify` 命令测试通知通道是否正常：
+
+```bash
+# 测试所有通道
+python -m src.cli notify
+
+# 测试 Telegram
+python -m src.cli notify --channel telegram
+
+# 测试飞书
+python -m src.cli notify --channel feishu
+```
+
 ## 核心模块
 
 ### `src/core.py`
 
-`XHSToYouTube` 负责协调下载、翻译、上传、批量处理和时间建议。
+`XHSToYouTube` 负责协调下载、翻译、上传、批量处理、时间建议和属灵内容。
 
 主要方法：
 
@@ -369,7 +478,7 @@ sudo systemctl status xhs-bot
 | `get_authorization_url()` | 获取 OAuth 授权链接 |
 | `authorize_youtube_with_code(code)` | 使用授权码完成授权 |
 | `generate_english_title(...)` | 生成英文标题 |
-| `generate_description(...)` | 生成视频描述 |
+| `generate_description(...)` | 生成视频描述（含属灵内容） |
 | `get_today_upload_count()` | 获取今日已上传数量 |
 | `_show_time_suggestion()` | 上传前显示时间建议 |
 | `_get_time_slot_info(hour)` | 按推荐时段返回时间段标签 |
@@ -377,8 +486,45 @@ sudo systemctl status xhs-bot
 
 注意：
 - `transfer()` 在非推荐时段会询问是否继续上传（需启用 `--time-confirm`）
-- `batch_transfer()` 默认启用翻译，且只统计成功上传数是否达到 `--limit`
-- `transfer()` 和 `batch_transfer()` 都会尝试记录上传结果，但 `uploaded.json` 当前实际落盘字段较少
+- `batch_transfer()` 默认不翻译，只做中文搬运
+- `generate_description()` 会根据配置插入属灵内容
+
+### `src/spiritual_content.py`
+
+属灵内容客户端模块，负责与 `readBiblecontext` 服务联调。
+
+主要组件：
+
+| 组件 | 说明 |
+|------|------|
+| `SpiritualContentResult` | 属灵内容结果数据类 |
+| `SpiritualContentClient` | 属灵内容客户端类 |
+
+主要方法：
+
+| 方法 | 说明 |
+|------|------|
+| `enabled()` | 检查属灵内容功能是否启用 |
+| `compose(text, tags, context, length, target_lang)` | 获取属灵短句 |
+
+使用示例：
+```python
+from src.spiritual_content import SpiritualContentClient
+
+client = SpiritualContentClient()
+if client.enabled():
+    result = client.compose(
+        text="今天很喜悦",
+        tags=["日常"],
+        context="vlog",
+        length=4,
+        target_lang="zh"
+    )
+    if result:
+        print(result.short_title)
+        print(result.lines)
+        print(result.references)
+```
 
 ### `src/schedule.py`
 
@@ -424,6 +570,7 @@ Telegram Bot 服务模块，提供远程控制和状态查询功能。
 | `send_feishu_message(webhook, message, level, title)` | 发送飞书消息 |
 | `notify_upload_result(task_time, result, error)` | 发送上传结果通知 |
 | `notify_daily_summary(today_uploads, tasks_status)` | 发送每日汇总通知 |
+| `test_notification_delivery(message, channel)` | 测试通知通道连通性 |
 
 ### `src/utils/retry.py`
 
@@ -505,7 +652,11 @@ result = retry_call(
 
 ### `src/translate.py`
 
-翻译服务当前仅支持 `MyMemory`：
+翻译服务支持：
+- `MyMemory` 翻译（默认）
+- `translation_api` 配置（可选，用于翻译属灵内容块）
+
+主要功能：
 - 请求 `https://api.mymemory.translated.net/get`
 - 翻译方向固定为 `zh-CN -> en`
 - 失败时返回原文
@@ -584,11 +735,28 @@ Google Cloud Console 下载的 OAuth 客户端凭证文件。
     "http": "http://127.0.0.1:7890",
     "https": "http://127.0.0.1:7890"
   },
+  "spiritual_content": {
+    "enabled": true,
+    "api_url": "http://127.0.0.1:8080",
+    "api_key": "",
+    "timeout": 15,
+    "style": "normal"
+  },
+  "translation_api": {
+    "enabled": false,
+    "api_url": "http://127.0.0.1:8080",
+    "api_key": "",
+    "timeout": 15,
+    "source_lang": "zh-CN",
+    "target_lang": "en",
+    "mode": "spiritual",
+    "preserve_lines": true
+  },
   "schedule": {
     "tasks": [
-      {"time": "08:00", "limit": 3, "enabled": true, "description": "早间上传"},
-      {"time": "12:00", "limit": 3, "enabled": true, "description": "午间上传"},
-      {"time": "20:00", "limit": 4, "enabled": true, "description": "晚间上传"}
+      {"time": "08:00", "limit": 1, "enabled": true, "description": "早间上传"},
+      {"time": "12:00", "limit": 1, "enabled": true, "description": "午间上传"},
+      {"time": "20:00", "limit": 1, "enabled": true, "description": "晚间上传"}
     ],
     "default_limit": 3,
     "log_file": "logs/schedule.log",
@@ -746,6 +914,15 @@ class AudienceCache:
     demographics: DemographicsData | None = None
     recommendation: TimeRecommendation | None = None
     insight: AudienceInsight | None = None
+
+@dataclass
+class SpiritualContentResult:
+    short_title: str
+    lines: list[str]
+    references: list[str]
+    confidence: float = 0.0
+    theme: str = ""
+    source_hits: list[dict[str, Any]] | None = None
 ```
 
 兼容别名：
@@ -789,15 +966,34 @@ python -m src.cli -i
 
 ## 测试
 
+### 运行测试
+
 ```bash
-python -m tests.test_flow
+# 运行主流程测试
+python -m pytest tests/test_flow.py -v
+
+# 运行属灵内容联调测试
+python -m pytest tests/test_spiritual_content.py -v
+
+# 运行所有测试
+python -m pytest tests/ -v
 ```
 
 某些环境下需要：
 
 ```bash
-python3 -m tests.test_flow
+python3 -m pytest tests/ -v
 ```
+
+### 真实网络测试
+
+部分测试需要真实网络访问，默认会跳过。要运行这些测试：
+
+```bash
+XHS_RUN_LIVE_TESTS=1 python -m pytest tests/test_flow.py -v -m live_network
+```
+
+### 测试覆盖
 
 当前测试覆盖：
 1. 凭证状态检查
@@ -808,6 +1004,9 @@ python3 -m tests.test_flow
 6. 时间推荐功能
 7. 时间段标签
 8. 上传记录数据结构
+9. 属灵内容客户端
+10. 属灵内容描述生成
+11. 翻译服务
 
 注意：
 - 测试不会实际上传 YouTube 视频
@@ -866,6 +1065,8 @@ google-auth-oauthlib>=1.0.0
 google-auth-httplib2>=0.1.0
 google-api-python-client>=2.0.0
 requests>=2.28.0
+pyperclip>=1.8.0
+qrcode>=7.4.0
 ```
 
 ### 可选依赖
@@ -878,6 +1079,22 @@ openai>=1.0.0      # translate 组（未实现）
 说明：
 - 当前 `pyproject.toml` 中声明 `translate` 可选依赖为 `openai>=1.0.0`，但代码未使用 OpenAI 翻译
 - 文档不应将该依赖描述为当前可用功能
+
+## 部署文档
+
+### 部署与交接说明
+
+详见 `docs/deploy-handoff.md`：
+- `readBiblecontext` 和 `xhs-to-youtube` 联调部署
+- 服务启动顺序
+- 验证步骤
+
+### 服务器执行顺序
+
+详见 `docs/server-execution.md`：
+- 快速启动指南
+- 中文属灵内容配置
+- 测试样例
 
 ## 测试参考
 

@@ -316,7 +316,12 @@ def menu_update_credentials(tool: XHSToYouTube):
         print("=" * 50)
         result = tool.get_authorization_url()
         if result[0]:
-            print(f"\n请访问以下链接授权：\n{result[1]}\n")
+            print("\n授权链接已生成。")
+            print("授权方式：")
+            print("  1. 扫描上方二维码（推荐）")
+            print("  2. 打开 auth_qrcode.png 图片扫码")
+            print("  3. 复制授权链接到浏览器")
+            print("\n授权后，将浏览器显示的授权码粘贴到下方：\n")
             code = input("请输入授权码：").strip()
             if code:
                 auth_result = tool.authorize_youtube_with_code(code)

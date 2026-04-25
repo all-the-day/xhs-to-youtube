@@ -11,6 +11,20 @@ from typing import Callable, Optional
 from src.config import CREDENTIALS_FILE, TOKEN_FILE, SCOPES, load_config
 from src.models import CredentialStatus
 
+# 剪贴板支持
+try:
+    import pyperclip
+    CLIPBOARD_AVAILABLE = True
+except ImportError:
+    CLIPBOARD_AVAILABLE = False
+
+# 二维码支持
+try:
+    import qrcode
+    QRCODE_AVAILABLE = True
+except ImportError:
+    QRCODE_AVAILABLE = False
+
 AUTH_SESSION_FILE = TOKEN_FILE.with_name("youtube_auth_session.json")
 
 # YouTube API 相关导入
@@ -288,8 +302,50 @@ class YouTubeUploader:
 
             self._log("[授权] 授权 URL 生成成功")
             self._log("[授权] 已保存授权会话，支持跨 MCP 调用完成授权")
-            self._log("[授权] 请复制以下 URL 到浏览器完成授权:")
-            self._log(auth_url)
+            
+            # 尝试复制到剪贴板
+            clipboard_success = False
+            if CLIPBOARD_AVAILABLE:
+                try:
+                    pyperclip.copy(auth_url)
+                    clipboard_success = True
+                    self._log("[授权] 授权链接已复制到剪贴板，可直接粘贴到浏览器")
+                except Exception:
+                    pass  # 剪贴板不可用，使用备用方案
+            
+            # 生成二维码
+            if QRCODE_AVAILABLE:
+                try:
+                    qr = qrcode.QRCode(
+                        version=1,
+                        error_correction=qrcode.constants.ERROR_CORRECT_L,
+                        box_size=10,
+                        border=2,
+                    )
+                    qr.add_data(auth_url)
+                    qr.make(fit=True)
+                    
+                    # 保存二维码图片
+                    qr_file = TOKEN_FILE.parent / "auth_qrcode.png"
+                    qr_img = qr.make_image(fill_color="black", back_color="white")
+                    qr_img.save(qr_file)
+                    self._log(f"[授权] 二维码已保存到: {qr_file}")
+                    self._log("[授权] 可用手机扫码授权")
+                    
+                    # 在终端显示 ASCII 二维码
+                    self._log("\n[授权] 或扫描下方二维码：")
+                    qr.print_ascii(invert=True)
+                    
+                except Exception as e:
+                    self._log(f"[提示] 二维码生成失败: {e}")
+            
+            if not clipboard_success and not QRCODE_AVAILABLE:
+                # 保存到文件，方便复制
+                auth_file = TOKEN_FILE.parent / "auth_url.txt"
+                auth_file.write_text(auth_url, encoding="utf-8")
+                self._log(f"[授权] 授权链接已保存到: {auth_file}")
+                self._log("[授权] 请复制文件内容或以下 URL 到浏览器完成授权:")
+                self._log(auth_url)
 
             return True, auth_url
 
