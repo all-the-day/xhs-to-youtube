@@ -61,10 +61,10 @@
       "uploaded_at": "2026-03-04 19:13:37"
     },
     "599bcce65e87e740f308ae78": {
-      "youtube_id": "6jpcsHx93ig",
-      "youtube_url": "https://www.youtube.com/watch?v=6jpcsHx93ig",
-      "title": "Touch carefully",
-      "uploaded_at": "2026-04-12 20:00:28",
+      "youtube_id": "rrechCS5j6c",
+      "youtube_url": "https://www.youtube.com/watch?v=rrechCS5j6c",
+      "title": "走走停停",
+      "uploaded_at": "2026-04-26 20:00:26",
       "upload_hour": 20,
       "time_slot": "黄金时段",
       "recommendation_followed": true
@@ -1097,6 +1097,33 @@
       "youtube_url": "https://www.youtube.com/watch?v=6jpcsHx93ig",
       "title": "Touch carefully",
       "uploaded_at": "2026-04-12 20:00:28",
+      "upload_hour": 20,
+      "time_slot": "黄金时段",
+      "recommendation_followed": true
+    },
+    "6892acbd0000000025015d6f": {
+      "youtube_id": "uwtlqgaaK9w",
+      "youtube_url": "https://www.youtube.com/watch?v=uwtlqgaaK9w",
+      "title": "行走的小鸡",
+      "uploaded_at": "2026-04-26 08:00:11",
+      "upload_hour": 8,
+      "time_slot": "非推荐时段",
+      "recommendation_followed": false
+    },
+    "6893fcd3000000002501ae9d": {
+      "youtube_id": "txqpPVAixBM",
+      "youtube_url": "https://www.youtube.com/watch?v=txqpPVAixBM",
+      "title": "可可爱爱的小鸡",
+      "uploaded_at": "2026-04-26 12:00:07",
+      "upload_hour": 12,
+      "time_slot": "次选时段",
+      "recommendation_followed": true
+    },
+    "6895488a0000000025028c98": {
+      "youtube_id": "rrechCS5j6c",
+      "youtube_url": "https://www.youtube.com/watch?v=rrechCS5j6c",
+      "title": "走走停停",
+      "uploaded_at": "2026-04-26 20:00:26",
       "upload_hour": 20,
       "time_slot": "黄金时段",
       "recommendation_followed": true

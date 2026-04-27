@@ -1,5 +1,46 @@
 # 小红书到 YouTube 视频搬运工具
 
+## Quick Reference
+
+```bash
+# Run tests
+python -m tests.test_flow
+
+# Interactive mode
+python -m src.cli -i
+
+# Single video transfer
+python -m src.cli transfer "URL" --translate
+
+# Batch upload
+python -m src.cli batch --limit 5
+
+# Check credentials
+python -m src.cli status
+
+# Run Telegram Bot
+python -m src.bot
+```
+
+## Architecture Overview
+
+**Core Flow:**
+1. `cli.py` → parses commands, instantiates `XHSToYouTube`
+2. `core.py` → orchestrates the workflow
+3. `download.py` → fetches video from Xiaohongshu
+4. `translate.py` → translates title/description (MyMemory)
+5. `upload.py` → uploads to YouTube via OAuth
+
+**Data Flow:**
+- Input: Xiaohongshu URL or `data/video_list.json`
+- State: `data/uploaded.json` tracks uploaded videos
+- Output: YouTube video ID
+
+**Key Constraints:**
+- Daily upload limit: 10 videos (configurable in `src/config.py`)
+- Translation: MyMemory only (no DeepL/OpenAI backend yet)
+- Cookie required: `cookies.txt` for Xiaohongshu access
+
 ## 项目概述
 
 将小红书视频自动搬运到 YouTube 频道的 CLI 工具，支持定时调度和远程控制。
@@ -825,6 +866,16 @@ python3 -m tests.test_flow
 补充说明：
 - 代码中的错误返回风格并不完全统一，既有返回字典的路径，也有直接抛出异常的路径
 - 文档应以当前实现行为为准，不应假定所有接口都统一返回 `(success, message)` 元组
+
+## Common Gotchas
+
+- **Python path**: Some environments have `python3` only, not `python`
+- **Cookie format**: `cookies.txt` accepts both JSON and Netscape format
+- **Upload limit**: If batch stops early, check daily limit in `data/uploaded.json`
+- **Time confirmation**: `--time-confirm` flag required for non-peak hour prompts
+- **Token expiry**: `token.json` may need refresh; run `python -m src.cli update --token`
+- **Proxy config**: Set proxies in `config/config.json` for network access
+- **YouTube quota**: YouTube may enforce its own upload limits separate from the app's daily limit
 
 ## Git 开发规范
 
