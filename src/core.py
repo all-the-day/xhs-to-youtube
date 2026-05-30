@@ -295,7 +295,7 @@ class XHSToYouTube:
         """完整的搬运流程"""
         self._log("=" * 60)
         self._log("小红书 → YouTube 视频搬运工具")
-        if translate:
+        if translate_title or translate_desc:
             self._log("[模式] 英文翻译模式")
         self._log("=" * 60)
 
@@ -314,7 +314,7 @@ class XHSToYouTube:
         video_info = self.download_video(xhs_url, title, description)
 
         # 2. 生成标题和描述
-        if translate and translate_title and not english_title:
+        if translate_title and not english_title:
             self._log("[翻译] 正在翻译标题...")
             title = self.generate_english_title(
                 video_info['title'],
@@ -327,14 +327,13 @@ class XHSToYouTube:
         if custom_desc:
             description = custom_desc
         else:
-            if translate and translate_desc:
+            if translate_desc:
                 self._log("[翻译] 正在翻译描述...")
             description = self.generate_description(
                 video_info['description'],
                 xhs_url,
                 video_info['uploader'],
-                translate=translate and translate_desc
-            )
+                                    translate=translate_desc            )
 
         # 3. 上传到 YouTube
         result = self.upload_to_youtube(

@@ -2,6 +2,7 @@
   "proxies": {},
   "schedule": {
     "tasks": [
+      {"time": "05:00", "limit": 1, "enabled": true, "description": "凌晨上传"},
       {"time": "08:00", "limit": 1, "enabled": true, "description": "早间上传"},
       {"time": "12:00", "limit": 1, "enabled": true, "description": "午间上传"},
       {"time": "20:00", "limit": 1, "enabled": true, "description": "晚间上传"}
